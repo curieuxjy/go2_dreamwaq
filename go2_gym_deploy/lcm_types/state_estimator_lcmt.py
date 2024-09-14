@@ -11,13 +11,53 @@ import struct
 
 
 class state_estimator_lcmt(object):
-    __slots__ = ["p", "vWorld", "vBody", "rpy", "omegaBody", "omegaWorld", "quat", "contact_estimate", "aBody",
-                 "aWorld", "timestamp_us", "id", "robot_id"]
+    __slots__ = [
+        "p",
+        "vWorld",
+        "vBody",
+        "rpy",
+        "omegaBody",
+        "omegaWorld",
+        "quat",
+        "contact_estimate",
+        "aBody",
+        "aWorld",
+        "timestamp_us",
+        "id",
+        "robot_id",
+    ]
 
-    __typenames__ = ["float", "float", "float", "float", "float", "float", "float", "float", "float", "float",
-                     "int64_t", "int64_t", "int64_t"]
+    __typenames__ = [
+        "float",
+        "float",
+        "float",
+        "float",
+        "float",
+        "float",
+        "float",
+        "float",
+        "float",
+        "float",
+        "int64_t",
+        "int64_t",
+        "int64_t",
+    ]
 
-    __dimensions__ = [[3], [3], [3], [3], [3], [3], [4], [4], [3], [3], None, None, None]
+    __dimensions__ = [
+        [3],
+        [3],
+        [3],
+        [3],
+        [3],
+        [3],
+        [4],
+        [4],
+        [3],
+        [3],
+        None,
+        None,
+        None,
+    ]
 
     def __init__(self):
         self.p = [0.0 for dim0 in range(3)]
@@ -41,20 +81,20 @@ class state_estimator_lcmt(object):
         return buf.getvalue()
 
     def _encode_one(self, buf):
-        buf.write(struct.pack('>3f', *self.p[:3]))
-        buf.write(struct.pack('>3f', *self.vWorld[:3]))
-        buf.write(struct.pack('>3f', *self.vBody[:3]))
-        buf.write(struct.pack('>3f', *self.rpy[:3]))
-        buf.write(struct.pack('>3f', *self.omegaBody[:3]))
-        buf.write(struct.pack('>3f', *self.omegaWorld[:3]))
-        buf.write(struct.pack('>4f', *self.quat[:4]))
-        buf.write(struct.pack('>4f', *self.contact_estimate[:4]))
-        buf.write(struct.pack('>3f', *self.aBody[:3]))
-        buf.write(struct.pack('>3f', *self.aWorld[:3]))
+        buf.write(struct.pack(">3f", *self.p[:3]))
+        buf.write(struct.pack(">3f", *self.vWorld[:3]))
+        buf.write(struct.pack(">3f", *self.vBody[:3]))
+        buf.write(struct.pack(">3f", *self.rpy[:3]))
+        buf.write(struct.pack(">3f", *self.omegaBody[:3]))
+        buf.write(struct.pack(">3f", *self.omegaWorld[:3]))
+        buf.write(struct.pack(">4f", *self.quat[:4]))
+        buf.write(struct.pack(">4f", *self.contact_estimate[:4]))
+        buf.write(struct.pack(">3f", *self.aBody[:3]))
+        buf.write(struct.pack(">3f", *self.aWorld[:3]))
         buf.write(struct.pack(">qqq", self.timestamp_us, self.id, self.robot_id))
 
     def decode(data):
-        if hasattr(data, 'read'):
+        if hasattr(data, "read"):
             buf = data
         else:
             buf = BytesIO(data)
@@ -66,25 +106,28 @@ class state_estimator_lcmt(object):
 
     def _decode_one(buf):
         self = state_estimator_lcmt()
-        self.p = struct.unpack('>3f', buf.read(12))
-        self.vWorld = struct.unpack('>3f', buf.read(12))
-        self.vBody = struct.unpack('>3f', buf.read(12))
-        self.rpy = struct.unpack('>3f', buf.read(12))
-        self.omegaBody = struct.unpack('>3f', buf.read(12))
-        self.omegaWorld = struct.unpack('>3f', buf.read(12))
-        self.quat = struct.unpack('>4f', buf.read(16))
-        self.contact_estimate = struct.unpack('>4f', buf.read(16))
-        self.aBody = struct.unpack('>3f', buf.read(12))
-        self.aWorld = struct.unpack('>3f', buf.read(12))
+        self.p = struct.unpack(">3f", buf.read(12))
+        self.vWorld = struct.unpack(">3f", buf.read(12))
+        self.vBody = struct.unpack(">3f", buf.read(12))
+        self.rpy = struct.unpack(">3f", buf.read(12))
+        self.omegaBody = struct.unpack(">3f", buf.read(12))
+        self.omegaWorld = struct.unpack(">3f", buf.read(12))
+        self.quat = struct.unpack(">4f", buf.read(16))
+        self.contact_estimate = struct.unpack(">4f", buf.read(16))
+        self.aBody = struct.unpack(">3f", buf.read(12))
+        self.aWorld = struct.unpack(">3f", buf.read(12))
         self.timestamp_us, self.id, self.robot_id = struct.unpack(">qqq", buf.read(24))
         return self
 
     _decode_one = staticmethod(_decode_one)
 
     def _get_hash_recursive(parents):
-        if state_estimator_lcmt in parents: return 0
-        tmphash = (0xea87c8282effe5b6) & 0xffffffffffffffff
-        tmphash = (((tmphash << 1) & 0xffffffffffffffff) + (tmphash >> 63)) & 0xffffffffffffffff
+        if state_estimator_lcmt in parents:
+            return 0
+        tmphash = (0xEA87C8282EFFE5B6) & 0xFFFFFFFFFFFFFFFF
+        tmphash = (
+            ((tmphash << 1) & 0xFFFFFFFFFFFFFFFF) + (tmphash >> 63)
+        ) & 0xFFFFFFFFFFFFFFFF
         return tmphash
 
     _get_hash_recursive = staticmethod(_get_hash_recursive)
@@ -92,7 +135,9 @@ class state_estimator_lcmt(object):
 
     def _get_packed_fingerprint():
         if state_estimator_lcmt._packed_fingerprint is None:
-            state_estimator_lcmt._packed_fingerprint = struct.pack(">Q", state_estimator_lcmt._get_hash_recursive([]))
+            state_estimator_lcmt._packed_fingerprint = struct.pack(
+                ">Q", state_estimator_lcmt._get_hash_recursive([])
+            )
         return state_estimator_lcmt._packed_fingerprint
 
     _get_packed_fingerprint = staticmethod(_get_packed_fingerprint)

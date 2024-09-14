@@ -36,12 +36,17 @@ class MultiLogger:
         self.loggers[name].log(info)
 
     def save(self, filename):
-        with open(filename, 'wb') as file:
+        with open(filename, "wb") as file:
             logdict = {}
             for key in self.loggers.keys():
-                logdict[key] = [class_to_dict(self.loggers[key].cfg), self.loggers[key].infos]
+                logdict[key] = [
+                    class_to_dict(self.loggers[key].cfg),
+                    self.loggers[key].infos,
+                ]
             pkl.dump(logdict, file)
-            print(f"Saved log! Number of timesteps: {[len(self.loggers[key].infos) for key in self.loggers.keys()]}; Path: {filename}")
+            print(
+                f"Saved log! Number of timesteps: {[len(self.loggers[key].infos) for key in self.loggers.keys()]}; Path: {filename}"
+            )
 
     def read_metric(self, metric, robot_name=None):
         if robot_name is None:

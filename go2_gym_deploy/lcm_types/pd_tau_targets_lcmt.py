@@ -11,9 +11,29 @@ import struct
 
 
 class pd_tau_targets_lcmt(object):
-    __slots__ = ["q_des", "qd_des", "tau_ff", "kp", "kd", "timestamp_us", "id", "robot_id", "se_contactState"]
+    __slots__ = [
+        "q_des",
+        "qd_des",
+        "tau_ff",
+        "kp",
+        "kd",
+        "timestamp_us",
+        "id",
+        "robot_id",
+        "se_contactState",
+    ]
 
-    __typenames__ = ["double", "double", "double", "double", "double", "int64_t", "int64_t", "int64_t", "double"]
+    __typenames__ = [
+        "double",
+        "double",
+        "double",
+        "double",
+        "double",
+        "int64_t",
+        "int64_t",
+        "int64_t",
+        "double",
+    ]
 
     __dimensions__ = [[12], [12], [12], [12], [12], None, None, None, [4]]
 
@@ -35,16 +55,16 @@ class pd_tau_targets_lcmt(object):
         return buf.getvalue()
 
     def _encode_one(self, buf):
-        buf.write(struct.pack('>12d', *self.q_des[:12]))
-        buf.write(struct.pack('>12d', *self.qd_des[:12]))
-        buf.write(struct.pack('>12d', *self.tau_ff[:12]))
-        buf.write(struct.pack('>12d', *self.kp[:12]))
-        buf.write(struct.pack('>12d', *self.kd[:12]))
+        buf.write(struct.pack(">12d", *self.q_des[:12]))
+        buf.write(struct.pack(">12d", *self.qd_des[:12]))
+        buf.write(struct.pack(">12d", *self.tau_ff[:12]))
+        buf.write(struct.pack(">12d", *self.kp[:12]))
+        buf.write(struct.pack(">12d", *self.kd[:12]))
         buf.write(struct.pack(">qqq", self.timestamp_us, self.id, self.robot_id))
-        buf.write(struct.pack('>4d', *self.se_contactState[:4]))
+        buf.write(struct.pack(">4d", *self.se_contactState[:4]))
 
     def decode(data):
-        if hasattr(data, 'read'):
+        if hasattr(data, "read"):
             buf = data
         else:
             buf = BytesIO(data)
@@ -56,21 +76,24 @@ class pd_tau_targets_lcmt(object):
 
     def _decode_one(buf):
         self = pd_tau_targets_lcmt()
-        self.q_des = struct.unpack('>12d', buf.read(96))
-        self.qd_des = struct.unpack('>12d', buf.read(96))
-        self.tau_ff = struct.unpack('>12d', buf.read(96))
-        self.kp = struct.unpack('>12d', buf.read(96))
-        self.kd = struct.unpack('>12d', buf.read(96))
+        self.q_des = struct.unpack(">12d", buf.read(96))
+        self.qd_des = struct.unpack(">12d", buf.read(96))
+        self.tau_ff = struct.unpack(">12d", buf.read(96))
+        self.kp = struct.unpack(">12d", buf.read(96))
+        self.kd = struct.unpack(">12d", buf.read(96))
         self.timestamp_us, self.id, self.robot_id = struct.unpack(">qqq", buf.read(24))
-        self.se_contactState = struct.unpack('>4d', buf.read(32))
+        self.se_contactState = struct.unpack(">4d", buf.read(32))
         return self
 
     _decode_one = staticmethod(_decode_one)
 
     def _get_hash_recursive(parents):
-        if pd_tau_targets_lcmt in parents: return 0
-        tmphash = (0x6d88128ef1291cc1) & 0xffffffffffffffff
-        tmphash = (((tmphash << 1) & 0xffffffffffffffff) + (tmphash >> 63)) & 0xffffffffffffffff
+        if pd_tau_targets_lcmt in parents:
+            return 0
+        tmphash = (0x6D88128EF1291CC1) & 0xFFFFFFFFFFFFFFFF
+        tmphash = (
+            ((tmphash << 1) & 0xFFFFFFFFFFFFFFFF) + (tmphash >> 63)
+        ) & 0xFFFFFFFFFFFFFFFF
         return tmphash
 
     _get_hash_recursive = staticmethod(_get_hash_recursive)
@@ -78,7 +101,9 @@ class pd_tau_targets_lcmt(object):
 
     def _get_packed_fingerprint():
         if pd_tau_targets_lcmt._packed_fingerprint is None:
-            pd_tau_targets_lcmt._packed_fingerprint = struct.pack(">Q", pd_tau_targets_lcmt._get_hash_recursive([]))
+            pd_tau_targets_lcmt._packed_fingerprint = struct.pack(
+                ">Q", pd_tau_targets_lcmt._get_hash_recursive([])
+            )
         return pd_tau_targets_lcmt._packed_fingerprint
 
     _get_packed_fingerprint = staticmethod(_get_packed_fingerprint)

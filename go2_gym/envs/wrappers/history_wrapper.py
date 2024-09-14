@@ -1,7 +1,9 @@
 import isaacgym
+
 assert isaacgym
 import torch
 import gym
+
 
 class HistoryWrapper(gym.Wrapper):
     def __init__(self, env):
@@ -11,8 +13,13 @@ class HistoryWrapper(gym.Wrapper):
         self.obs_history_length = self.env.cfg.env.num_observation_history
 
         self.num_obs_history = self.obs_history_length * self.num_obs
-        self.obs_history = torch.zeros(self.env.num_envs, self.num_obs_history, dtype=torch.float,
-                                       device=self.env.device, requires_grad=False)
+        self.obs_history = torch.zeros(
+            self.env.num_envs,
+            self.num_obs_history,
+            dtype=torch.float,
+            device=self.env.device,
+            requires_grad=False,
+        )
         self.num_privileged_obs = self.num_privileged_obs
 
     def step(self, action):
@@ -20,16 +27,35 @@ class HistoryWrapper(gym.Wrapper):
         obs, rew, done, info = self.env.step(action)
         privileged_obs = info["privileged_obs"]
 
-        self.obs_history = torch.cat((self.obs_history[:, self.env.num_obs:], obs), dim=-1)
-        return {'obs': obs, 'privileged_obs': privileged_obs, 'obs_history': self.obs_history}, rew, done, info
+        self.obs_history = torch.cat(
+            (self.obs_history[:, self.env.num_obs :], obs), dim=-1
+        )
+        return (
+            {
+                "obs": obs,
+                "privileged_obs": privileged_obs,
+                "obs_history": self.obs_history,
+            },
+            rew,
+            done,
+            info,
+        )
 
     def get_observations(self):
         obs = self.env.get_observations()
         privileged_obs = self.env.get_privileged_observations()
-        self.obs_history = torch.cat((self.obs_history[:, self.env.num_obs:], obs), dim=-1)
-        return {'obs': obs, 'privileged_obs': privileged_obs, 'obs_history': self.obs_history}
+        self.obs_history = torch.cat(
+            (self.obs_history[:, self.env.num_obs :], obs), dim=-1
+        )
+        return {
+            "obs": obs,
+            "privileged_obs": privileged_obs,
+            "obs_history": self.obs_history,
+        }
 
-    def reset_idx(self, env_ids):  # it might be a problem that this isn't getting called!!
+    def reset_idx(
+        self, env_ids
+    ):  # it might be a problem that this isn't getting called!!
         ret = super().reset_idx(env_ids)
         self.obs_history[env_ids, :] = 0
         return ret
@@ -38,7 +64,11 @@ class HistoryWrapper(gym.Wrapper):
         ret = super().reset()
         privileged_obs = self.env.get_privileged_observations()
         self.obs_history[:, :] = 0
-        return {"obs": ret, "privileged_obs": privileged_obs, "obs_history": self.obs_history}
+        return {
+            "obs": ret,
+            "privileged_obs": privileged_obs,
+            "obs_history": self.obs_history,
+        }
 
 
 if __name__ == "__main__":
@@ -53,6 +83,7 @@ if __name__ == "__main__":
 
     from go2_gym.envs.base.legged_robot_config import Cfg
     from go2_gym.envs.mini_cheetah.mini_cheetah_config import config_mini_cheetah
+
     config_mini_cheetah(Cfg)
 
     test_env = gym.make("VelocityTrackingEasyEnv-v0", cfg=Cfg)
@@ -67,6 +98,6 @@ if __name__ == "__main__":
         print(f"privileged obs: {obs['privileged_obs']}")
         print(f"obs_history: {obs['obs_history']}")
 
-        img = env.render('rgb_array')
+        img = env.render("rgb_array")
         plt.imshow(img)
         plt.show()

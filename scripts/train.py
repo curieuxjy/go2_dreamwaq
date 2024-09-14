@@ -1,6 +1,7 @@
 def train_go2(headless=True):
 
     import isaacgym
+
     assert isaacgym
     import torch
 
@@ -95,11 +96,13 @@ def train_go2(headless=True):
     Cfg.domain_rand.tile_height_curriculum_step = 0.01
     Cfg.terrain.border_size = 0.0
     # Default value = "trimesh"
-    Cfg.terrain.mesh_type = "trimesh"  # "heightfield" # none, plane, heightfield or trimesh
+    Cfg.terrain.mesh_type = (
+        "trimesh"  # "heightfield" # none, plane, heightfield or trimesh
+    )
     Cfg.terrain.num_cols = 30
     Cfg.terrain.num_rows = 30
-    Cfg.terrain.terrain_width = 1.0 # 5.0
-    Cfg.terrain.terrain_length = 1.0 # 5.0
+    Cfg.terrain.terrain_width = 1.0  # 5.0
+    Cfg.terrain.terrain_length = 1.0  # 5.0
     Cfg.terrain.x_init_range = 0.2
     Cfg.terrain.y_init_range = 0.2
     Cfg.terrain.teleport_thresh = 0.3
@@ -138,8 +141,8 @@ def train_go2(headless=True):
     Cfg.reward_scales.feet_air_time = 0.0
     Cfg.reward_scales.hop_symmetry = 0.0
     Cfg.rewards.kappa_gait_probs = 0.07
-    Cfg.rewards.gait_force_sigma = 100.
-    Cfg.rewards.gait_vel_sigma = 10.
+    Cfg.rewards.gait_force_sigma = 100.0
+    Cfg.rewards.gait_vel_sigma = 10.0
     Cfg.reward_scales.tracking_contacts_shaped_force = 4.0
     Cfg.reward_scales.tracking_contacts_shaped_vel = 4.0
     Cfg.reward_scales.collision = -5.0
@@ -148,8 +151,6 @@ def train_go2(headless=True):
     Cfg.rewards.only_positive_rewards = False
     Cfg.rewards.only_positive_rewards_ji22_style = True
     Cfg.rewards.sigma_rew_neg = 0.02
-
-
 
     Cfg.commands.lin_vel_x = [-1.0, 1.0]
     Cfg.commands.lin_vel_y = [-0.6, 0.6]
@@ -205,27 +206,36 @@ def train_go2(headless=True):
     Cfg.commands.binary_phases = True
     Cfg.commands.gaitwise_curricula = True
 
-    env = VelocityTrackingEasyEnv(sim_device='cuda:0', headless=headless, cfg=Cfg)
+    env = VelocityTrackingEasyEnv(sim_device="cuda:0", headless=headless, cfg=Cfg)
 
     # log the experiment parameters
-    logger.log_params(AC_Args=vars(AC_Args), PPO_Args=vars(PPO_Args), RunnerArgs=vars(RunnerArgs),
-                      Cfg=vars(Cfg))
+    logger.log_params(
+        AC_Args=vars(AC_Args),
+        PPO_Args=vars(PPO_Args),
+        RunnerArgs=vars(RunnerArgs),
+        Cfg=vars(Cfg),
+    )
 
     env = HistoryWrapper(env)
     gpu_id = 0
     runner = Runner(env, device=f"cuda:{gpu_id}")
-    runner.learn(num_learning_iterations=100000, init_at_random_ep_len=True, eval_freq=100)
+    runner.learn(
+        num_learning_iterations=200000, init_at_random_ep_len=True, eval_freq=100
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from pathlib import Path
     from ml_logger import logger
     from go2_gym import MINI_GYM_ROOT_DIR
 
     stem = Path(__file__).stem
-    logger.configure(logger.utcnow(f'gait-conditioned-agility/%Y-%m-%d/{stem}/%H%M%S.%f'),
-                     root=Path(f"{MINI_GYM_ROOT_DIR}/runs").resolve(), )
-    logger.log_text("""
+    logger.configure(
+        logger.utcnow(f"gait-conditioned-agility/%Y-%m-%d/{stem}/%H%M%S.%f"),
+        root=Path(f"{MINI_GYM_ROOT_DIR}/runs").resolve(),
+    )
+    logger.log_text(
+        """
                 charts: 
                 - yKey: train/episode/rew_total/mean
                   xKey: iterations
@@ -251,7 +261,10 @@ if __name__ == '__main__':
                   glob: "videos/*.mp4"
                 - yKey: adaptation_loss/mean
                   xKey: iterations
-                """, filename=".charts.yml", dedent=True)
+                """,
+        filename=".charts.yml",
+        dedent=True,
+    )
 
     # to see the environment rendering, set headless=False
     train_go2(headless=True)

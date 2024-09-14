@@ -15,11 +15,17 @@ actuator_network_path = "../../resources/actuator_nets/unitree_go1_new.pt"
 
 log_dirs = glob(f"{log_dir_root}{log_dir}/", recursive=True)
 
-if len(log_dirs) == 0: raise FileNotFoundError(f"No log files found in {log_dir_root}{log_dir}/")
+if len(log_dirs) == 0:
+    raise FileNotFoundError(f"No log files found in {log_dir_root}{log_dir}/")
 
 for log_dir in log_dirs:
     try:
-        train_actuator_network_and_plot_predictions(log_dir[:11], log_dir[11:], actuator_network_path=actuator_network_path, load_pretrained_model=load_pretrained_model)
+        train_actuator_network_and_plot_predictions(
+            log_dir[:11],
+            log_dir[11:],
+            actuator_network_path=actuator_network_path,
+            load_pretrained_model=load_pretrained_model,
+        )
     except FileNotFoundError:
         print(f"Couldn't find log.pkl in {log_dir}")
     except EOFError:

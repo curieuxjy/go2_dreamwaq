@@ -20,7 +20,7 @@ def rand_regular():
     Cfg.domain_rand.restitution_range = [0, 1.0]
     Cfg.domain_rand.restitution = 0.5
     Cfg.domain_rand.randomize_base_mass = True
-    Cfg.domain_rand.added_mass_range = [-1., 3.]
+    Cfg.domain_rand.added_mass_range = [-1.0, 3.0]
     Cfg.domain_rand.randomize_com_displacement = True
     Cfg.domain_rand.com_displacement_range = [-0.1, 0.1]
     Cfg.domain_rand.randomize_motor_strength = True
@@ -31,7 +31,7 @@ def rand_regular():
     Cfg.domain_rand.Kd_factor_range = [0.5, 1.5]
     Cfg.domain_rand.push_robots = False
     Cfg.domain_rand.push_interval_s = 15
-    Cfg.domain_rand.max_push_vel_xy = 1.
+    Cfg.domain_rand.max_push_vel_xy = 1.0
 
 
 def rand_large():
@@ -41,18 +41,21 @@ def rand_large():
     Cfg.domain_rand.restitution_range = [0, 1.0]
     Cfg.domain_rand.restitution = 0.5
     Cfg.domain_rand.randomize_base_mass = True
-    Cfg.domain_rand.added_mass_range = [-1.5, 4.]
+    Cfg.domain_rand.added_mass_range = [-1.5, 4.0]
     Cfg.domain_rand.randomize_com_displacement = True
     Cfg.domain_rand.com_displacement_range = [-0.13, 0.13]
     Cfg.domain_rand.randomize_motor_strength = True
-    Cfg.domain_rand.motor_strength_range = [0.88, 1.12]  # table 1 in RMA may have a typo
+    Cfg.domain_rand.motor_strength_range = [
+        0.88,
+        1.12,
+    ]  # table 1 in RMA may have a typo
     Cfg.domain_rand.randomize_Kp_factor = False
     Cfg.domain_rand.Kp_factor_range = [0.8, 1.3]
     Cfg.domain_rand.randomize_Kd_factor = False
     Cfg.domain_rand.Kd_factor_range = [0.5, 1.5]
     Cfg.domain_rand.push_robots = False
     Cfg.domain_rand.push_interval_s = 15
-    Cfg.domain_rand.max_push_vel_xy = 1.
+    Cfg.domain_rand.max_push_vel_xy = 1.0
 
 
 def static_low():
@@ -62,7 +65,7 @@ def static_low():
     Cfg.domain_rand.restitution_range = [0, 0.01]
     Cfg.domain_rand.restitution = 0.5
     Cfg.domain_rand.randomize_base_mass = True
-    Cfg.domain_rand.added_mass_range = [-1., -0.99]
+    Cfg.domain_rand.added_mass_range = [-1.0, -0.99]
     Cfg.domain_rand.randomize_com_displacement = True
     Cfg.domain_rand.com_displacement_range = [-0.1, -0.09]
     Cfg.domain_rand.randomize_motor_strength = True
@@ -73,7 +76,7 @@ def static_low():
     Cfg.domain_rand.Kd_factor_range = [0.5, 1.5]
     Cfg.domain_rand.push_robots = False
     Cfg.domain_rand.push_interval_s = 15
-    Cfg.domain_rand.max_push_vel_xy = 1.
+    Cfg.domain_rand.max_push_vel_xy = 1.0
 
 
 def static_medium():
@@ -94,7 +97,7 @@ def static_medium():
     Cfg.domain_rand.Kd_factor_range = [0.5, 1.5]
     Cfg.domain_rand.push_robots = False
     Cfg.domain_rand.push_interval_s = 15
-    Cfg.domain_rand.max_push_vel_xy = 1.
+    Cfg.domain_rand.max_push_vel_xy = 1.0
 
 
 def static_high():
@@ -104,7 +107,7 @@ def static_high():
     Cfg.domain_rand.restitution_range = [0.99, 1.0]
     Cfg.domain_rand.restitution = 0.5
     Cfg.domain_rand.randomize_base_mass = True
-    Cfg.domain_rand.added_mass_range = [2.99, 3.]
+    Cfg.domain_rand.added_mass_range = [2.99, 3.0]
     Cfg.domain_rand.randomize_com_displacement = True
     Cfg.domain_rand.com_displacement_range = [0.09, 0.1]
     Cfg.domain_rand.randomize_motor_strength = True
@@ -115,7 +118,8 @@ def static_high():
     Cfg.domain_rand.Kd_factor_range = [0.5, 1.5]
     Cfg.domain_rand.push_robots = False
     Cfg.domain_rand.push_interval_s = 15
-    Cfg.domain_rand.max_push_vel_xy = 1.
+    Cfg.domain_rand.max_push_vel_xy = 1.0
+
 
 def only_base_mass():
     Cfg.domain_rand.randomize_friction = True
@@ -135,7 +139,7 @@ def only_base_mass():
     Cfg.domain_rand.Kd_factor_range = [0.5, 1.5]
     Cfg.domain_rand.push_robots = False
     Cfg.domain_rand.push_interval_s = 15
-    Cfg.domain_rand.max_push_vel_xy = 1.
+    Cfg.domain_rand.max_push_vel_xy = 1.0
 
 
 DR_SETTINGS = dict(

@@ -7,7 +7,7 @@ dirs = glob.glob(f"../../runs/{label}/*")
 logdir = sorted(dirs)[0]
 
 # transfer
-with open(logdir+"/parameters.pkl", 'rb') as file:
+with open(logdir + "/parameters.pkl", "rb") as file:
     pkl_cfg = pickle.load(file)
     # 我们通过 torch.is_tensor(v) 检查字典中的每个值 v 是否为 PyTorch 张量。
     # 如果是，我们应用 .cpu() 方法将其转移到 CPU；如果不是，我们保留原值。
@@ -16,6 +16,6 @@ with open(logdir+"/parameters.pkl", 'rb') as file:
     print("Transfer Succeed ! !")
 
 # save transferred .pkl file
-with open(logdir+"/parameters_cpu.pkl", 'wb') as file:
+with open(logdir + "/parameters_cpu.pkl", "wb") as file:
     pickle.dump(pkl_cfg_cpu, file)
     print("Transferred Pickle File has been saved as parameters_cpu.pkl")

@@ -9,7 +9,7 @@ class AC_Args(PrefixProto, cli=False):
     init_noise_std = 1.0
     actor_hidden_dims = [512, 256, 128]
     critic_hidden_dims = [512, 256, 128]
-    activation = 'elu'  # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
+    activation = "elu"  # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
 
     adaptation_module_branch_hidden_dims = [256, 128]
 
@@ -19,14 +19,14 @@ class AC_Args(PrefixProto, cli=False):
 class ActorCritic(nn.Module):
     is_recurrent = False
 
-    def __init__(self, num_obs,
-                 num_privileged_obs,
-                 num_obs_history,
-                 num_actions,
-                 **kwargs):
+    def __init__(
+        self, num_obs, num_privileged_obs, num_obs_history, num_actions, **kwargs
+    ):
         if kwargs:
-            print("ActorCritic.__init__ got unexpected arguments, which will be ignored: " + str(
-                [key for key in kwargs.keys()]))
+            print(
+                "ActorCritic.__init__ got unexpected arguments, which will be ignored: "
+                + str([key for key in kwargs.keys()])
+            )
         self.decoder = AC_Args.use_decoder
         super().__init__()
 
@@ -37,42 +37,71 @@ class ActorCritic(nn.Module):
 
         # Adaptation module
         adaptation_module_layers = []
-        adaptation_module_layers.append(nn.Linear(self.num_obs_history, AC_Args.adaptation_module_branch_hidden_dims[0]))
+        adaptation_module_layers.append(
+            nn.Linear(
+                self.num_obs_history, AC_Args.adaptation_module_branch_hidden_dims[0]
+            )
+        )
         adaptation_module_layers.append(activation)
         for l in range(len(AC_Args.adaptation_module_branch_hidden_dims)):
             if l == len(AC_Args.adaptation_module_branch_hidden_dims) - 1:
                 adaptation_module_layers.append(
-                    nn.Linear(AC_Args.adaptation_module_branch_hidden_dims[l], self.num_privileged_obs))
+                    nn.Linear(
+                        AC_Args.adaptation_module_branch_hidden_dims[l],
+                        self.num_privileged_obs,
+                    )
+                )
             else:
                 adaptation_module_layers.append(
-                    nn.Linear(AC_Args.adaptation_module_branch_hidden_dims[l],
-                              AC_Args.adaptation_module_branch_hidden_dims[l + 1]))
+                    nn.Linear(
+                        AC_Args.adaptation_module_branch_hidden_dims[l],
+                        AC_Args.adaptation_module_branch_hidden_dims[l + 1],
+                    )
+                )
                 adaptation_module_layers.append(activation)
         self.adaptation_module = nn.Sequential(*adaptation_module_layers)
 
-
-
         # Policy
         actor_layers = []
-        actor_layers.append(nn.Linear(self.num_privileged_obs + self.num_obs_history, AC_Args.actor_hidden_dims[0]))
+        actor_layers.append(
+            nn.Linear(
+                self.num_privileged_obs + self.num_obs_history,
+                AC_Args.actor_hidden_dims[0],
+            )
+        )
         actor_layers.append(activation)
         for l in range(len(AC_Args.actor_hidden_dims)):
             if l == len(AC_Args.actor_hidden_dims) - 1:
-                actor_layers.append(nn.Linear(AC_Args.actor_hidden_dims[l], num_actions))
+                actor_layers.append(
+                    nn.Linear(AC_Args.actor_hidden_dims[l], num_actions)
+                )
             else:
-                actor_layers.append(nn.Linear(AC_Args.actor_hidden_dims[l], AC_Args.actor_hidden_dims[l + 1]))
+                actor_layers.append(
+                    nn.Linear(
+                        AC_Args.actor_hidden_dims[l], AC_Args.actor_hidden_dims[l + 1]
+                    )
+                )
                 actor_layers.append(activation)
         self.actor_body = nn.Sequential(*actor_layers)
 
         # Value function
         critic_layers = []
-        critic_layers.append(nn.Linear(self.num_privileged_obs + self.num_obs_history, AC_Args.critic_hidden_dims[0]))
+        critic_layers.append(
+            nn.Linear(
+                self.num_privileged_obs + self.num_obs_history,
+                AC_Args.critic_hidden_dims[0],
+            )
+        )
         critic_layers.append(activation)
         for l in range(len(AC_Args.critic_hidden_dims)):
             if l == len(AC_Args.critic_hidden_dims) - 1:
                 critic_layers.append(nn.Linear(AC_Args.critic_hidden_dims[l], 1))
             else:
-                critic_layers.append(nn.Linear(AC_Args.critic_hidden_dims[l], AC_Args.critic_hidden_dims[l + 1]))
+                critic_layers.append(
+                    nn.Linear(
+                        AC_Args.critic_hidden_dims[l], AC_Args.critic_hidden_dims[l + 1]
+                    )
+                )
                 critic_layers.append(activation)
         self.critic_body = nn.Sequential(*critic_layers)
 
@@ -89,8 +118,12 @@ class ActorCritic(nn.Module):
     @staticmethod
     # not used at the moment
     def init_weights(sequential, scales):
-        [torch.nn.init.orthogonal_(module.weight, gain=scales[idx]) for idx, module in
-         enumerate(mod for mod in sequential if isinstance(mod, nn.Linear))]
+        [
+            torch.nn.init.orthogonal_(module.weight, gain=scales[idx])
+            for idx, module in enumerate(
+                mod for mod in sequential if isinstance(mod, nn.Linear)
+            )
+        ]
 
     def reset(self, dones=None):
         pass
@@ -113,7 +146,7 @@ class ActorCritic(nn.Module):
     def update_distribution(self, observation_history):
         latent = self.adaptation_module(observation_history)
         mean = self.actor_body(torch.cat((observation_history, latent), dim=-1))
-        self.distribution = Normal(mean, mean * 0. + self.std)
+        self.distribution = Normal(mean, mean * 0.0 + self.std)
 
     def act(self, observation_history, **kwargs):
         self.update_distribution(observation_history)
@@ -135,16 +168,21 @@ class ActorCritic(nn.Module):
         return actions_mean
 
     def act_teacher(self, observation_history, privileged_info, policy_info={}):
-        actions_mean = self.actor_body(torch.cat((observation_history, privileged_info), dim=-1))
+        actions_mean = self.actor_body(
+            torch.cat((observation_history, privileged_info), dim=-1)
+        )
         policy_info["latents"] = privileged_info
         return actions_mean
 
     def evaluate(self, observation_history, privileged_observations, **kwargs):
-        value = self.critic_body(torch.cat((observation_history, privileged_observations), dim=-1))
+        value = self.critic_body(
+            torch.cat((observation_history, privileged_observations), dim=-1)
+        )
         return value
 
     def get_student_latent(self, observation_history):
         return self.adaptation_module(observation_history)
+
 
 def get_activation(act_name):
     if act_name == "elu":

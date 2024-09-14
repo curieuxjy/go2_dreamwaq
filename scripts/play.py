@@ -14,16 +14,20 @@ from go2_gym.envs.go2.velocity_tracking import VelocityTrackingEasyEnv
 
 from tqdm import tqdm
 
+
 def load_policy(logdir):
-    body = torch.jit.load(logdir + '/checkpoints/body_latest.jit')
+    body = torch.jit.load(logdir + "/checkpoints/body_latest.jit")
     import os
-    adaptation_module = torch.jit.load(logdir + '/checkpoints/adaptation_module_latest.jit')
+
+    adaptation_module = torch.jit.load(
+        logdir + "/checkpoints/adaptation_module_latest.jit"
+    )
 
     def policy(obs, info={}):
         i = 0
-        latent = adaptation_module.forward(obs["obs_history"].to('cpu'))
-        action = body.forward(torch.cat((obs["obs_history"].to('cpu'), latent), dim=-1))
-        info['latent'] = latent
+        latent = adaptation_module.forward(obs["obs_history"].to("cpu"))
+        action = body.forward(torch.cat((obs["obs_history"].to("cpu"), latent), dim=-1))
+        info["latent"] = latent
         return action
 
     return policy
@@ -33,7 +37,7 @@ def load_env(label, headless=False):
     dirs = glob.glob(f"../runs/{label}/*")
     logdir = sorted(dirs)[0]
 
-    with open(logdir + "/parameters.pkl", 'rb') as file:
+    with open(logdir + "/parameters.pkl", "rb") as file:
         pkl_cfg = pkl.load(file)
         print(pkl_cfg.keys())
         cfg = pkl_cfg["Cfg"]
@@ -71,13 +75,12 @@ def load_env(label, headless=False):
     Cfg.domain_rand.lag_timesteps = 6
     Cfg.domain_rand.randomize_lag_timesteps = True
     # default control_typw is "actuator_net", you can also switch it to "P" to enable joint PD control
-    Cfg.control.control_type = "actuator_net" 
+    Cfg.control.control_type = "actuator_net"
     Cfg.asset.flip_visual_attachments = True
-
 
     from go2_gym.envs.wrappers.history_wrapper import HistoryWrapper
 
-    env = VelocityTrackingEasyEnv(sim_device='cuda:0', headless=False, cfg=Cfg)
+    env = VelocityTrackingEasyEnv(sim_device="cuda:0", headless=False, cfg=Cfg)
     env = HistoryWrapper(env)
 
     # load policy
@@ -100,19 +103,20 @@ def play_go2(headless=True):
     # label = "gait-conditioned-agility/pretrain-v0/train"
     label = "gait-conditioned-agility/pretrain-go2/train"
 
-
     env, policy = load_env(label, headless=headless)
 
-    num_eval_steps = 2500 #250
-    gaits = {"pronking": [0, 0, 0],
-             "trotting": [0.5, 0, 0],
-             "bounding": [0, 0.5, 0],
-             "pacing": [0, 0, 0.5]}
+    num_eval_steps = 2500  # 250
+    gaits = {
+        "pronking": [0, 0, 0],
+        "trotting": [0.5, 0, 0],
+        "bounding": [0, 0.5, 0],
+        "pacing": [0, 0, 0.5],
+    }
 
     # x_vel_cmd, y_vel_cmd, yaw_vel_cmd = 1.5, 0.0, 0.0
     x_vel_cmd, y_vel_cmd, yaw_vel_cmd = 1.5, 0.0, 0.0
     body_height_cmd = 0.0
-    step_frequency_cmd = 3.0 #3.0
+    step_frequency_cmd = 3.0  # 3.0
     # gait = torch.tensor(gaits["trotting"])
     gait = torch.tensor(gaits["pronking"])
     footswing_height_cmd = 0.08
@@ -151,20 +155,43 @@ def play_go2(headless=True):
 
     # plot target and measured forward velocity
     from matplotlib import pyplot as plt
+
     fig, axs = plt.subplots(3, 1, figsize=(12, 5))
-    axs[0].plot(np.linspace(0, num_eval_steps * env.dt, num_eval_steps), measured_x_vels, color='black', linestyle="-", label="Measured")
-    axs[0].plot(np.linspace(0, num_eval_steps * env.dt, num_eval_steps), target_x_vels, color='black', linestyle="--", label="Desired")
+    axs[0].plot(
+        np.linspace(0, num_eval_steps * env.dt, num_eval_steps),
+        measured_x_vels,
+        color="black",
+        linestyle="-",
+        label="Measured",
+    )
+    axs[0].plot(
+        np.linspace(0, num_eval_steps * env.dt, num_eval_steps),
+        target_x_vels,
+        color="black",
+        linestyle="--",
+        label="Desired",
+    )
     axs[0].legend()
     axs[0].set_title("Forward Linear Velocity")
     axs[0].set_xlabel("Time (s)")
     axs[0].set_ylabel("Velocity (m/s)")
 
-    axs[1].plot(np.linspace(0, num_eval_steps * env.dt, num_eval_steps), joint_positions, linestyle="-", label="Measured")
+    axs[1].plot(
+        np.linspace(0, num_eval_steps * env.dt, num_eval_steps),
+        joint_positions,
+        linestyle="-",
+        label="Measured",
+    )
     axs[1].set_title("Joint Positions")
     axs[1].set_xlabel("Time (s)")
     axs[1].set_ylabel("Joint Position (rad)")
 
-    axs[2].plot(np.linspace(0, num_eval_steps * env.dt, num_eval_steps), joint_torques, linestyle="-", label="Measured")
+    axs[2].plot(
+        np.linspace(0, num_eval_steps * env.dt, num_eval_steps),
+        joint_torques,
+        linestyle="-",
+        label="Measured",
+    )
     axs[2].set_title("Joint Torques")
     axs[2].set_xlabel("Time (s)")
     axs[2].set_ylabel("Joint Torques (Nm)")
@@ -173,6 +200,6 @@ def play_go2(headless=True):
     plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # to see the environment rendering, set headless=False
     play_go2(headless=False)

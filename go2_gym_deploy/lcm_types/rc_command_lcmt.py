@@ -11,11 +11,31 @@ import struct
 
 
 class rc_command_lcmt(object):
-    __slots__ = ["mode", "left_stick", "right_stick", "knobs", "left_upper_switch", "left_lower_left_switch",
-                 "left_lower_right_switch", "right_upper_switch", "right_lower_left_switch", "right_lower_right_switch"]
+    __slots__ = [
+        "mode",
+        "left_stick",
+        "right_stick",
+        "knobs",
+        "left_upper_switch",
+        "left_lower_left_switch",
+        "left_lower_right_switch",
+        "right_upper_switch",
+        "right_lower_left_switch",
+        "right_lower_right_switch",
+    ]
 
-    __typenames__ = ["int16_t", "float", "float", "float", "int16_t", "int16_t", "int16_t", "int16_t", "int16_t",
-                     "int16_t"]
+    __typenames__ = [
+        "int16_t",
+        "float",
+        "float",
+        "float",
+        "int16_t",
+        "int16_t",
+        "int16_t",
+        "int16_t",
+        "int16_t",
+        "int16_t",
+    ]
 
     __dimensions__ = [None, [2], [2], [2], None, None, None, None, None, None]
 
@@ -39,15 +59,23 @@ class rc_command_lcmt(object):
 
     def _encode_one(self, buf):
         buf.write(struct.pack(">h", self.mode))
-        buf.write(struct.pack('>2f', *self.left_stick[:2]))
-        buf.write(struct.pack('>2f', *self.right_stick[:2]))
-        buf.write(struct.pack('>2f', *self.knobs[:2]))
+        buf.write(struct.pack(">2f", *self.left_stick[:2]))
+        buf.write(struct.pack(">2f", *self.right_stick[:2]))
+        buf.write(struct.pack(">2f", *self.knobs[:2]))
         buf.write(
-            struct.pack(">hhhhhh", self.left_upper_switch, self.left_lower_left_switch, self.left_lower_right_switch,
-                        self.right_upper_switch, self.right_lower_left_switch, self.right_lower_right_switch))
+            struct.pack(
+                ">hhhhhh",
+                self.left_upper_switch,
+                self.left_lower_left_switch,
+                self.left_lower_right_switch,
+                self.right_upper_switch,
+                self.right_lower_left_switch,
+                self.right_lower_right_switch,
+            )
+        )
 
     def decode(data):
-        if hasattr(data, 'read'):
+        if hasattr(data, "read"):
             buf = data
         else:
             buf = BytesIO(data)
@@ -60,19 +88,28 @@ class rc_command_lcmt(object):
     def _decode_one(buf):
         self = rc_command_lcmt()
         self.mode = struct.unpack(">h", buf.read(2))[0]
-        self.left_stick = struct.unpack('>2f', buf.read(8))
-        self.right_stick = struct.unpack('>2f', buf.read(8))
-        self.knobs = struct.unpack('>2f', buf.read(8))
-        self.left_upper_switch, self.left_lower_left_switch, self.left_lower_right_switch, self.right_upper_switch, self.right_lower_left_switch, self.right_lower_right_switch = struct.unpack(
-            ">hhhhhh", buf.read(12))
+        self.left_stick = struct.unpack(">2f", buf.read(8))
+        self.right_stick = struct.unpack(">2f", buf.read(8))
+        self.knobs = struct.unpack(">2f", buf.read(8))
+        (
+            self.left_upper_switch,
+            self.left_lower_left_switch,
+            self.left_lower_right_switch,
+            self.right_upper_switch,
+            self.right_lower_left_switch,
+            self.right_lower_right_switch,
+        ) = struct.unpack(">hhhhhh", buf.read(12))
         return self
 
     _decode_one = staticmethod(_decode_one)
 
     def _get_hash_recursive(parents):
-        if rc_command_lcmt in parents: return 0
-        tmphash = (0xc7726b02ec3e7de2) & 0xffffffffffffffff
-        tmphash = (((tmphash << 1) & 0xffffffffffffffff) + (tmphash >> 63)) & 0xffffffffffffffff
+        if rc_command_lcmt in parents:
+            return 0
+        tmphash = (0xC7726B02EC3E7DE2) & 0xFFFFFFFFFFFFFFFF
+        tmphash = (
+            ((tmphash << 1) & 0xFFFFFFFFFFFFFFFF) + (tmphash >> 63)
+        ) & 0xFFFFFFFFFFFFFFFF
         return tmphash
 
     _get_hash_recursive = staticmethod(_get_hash_recursive)
@@ -80,7 +117,9 @@ class rc_command_lcmt(object):
 
     def _get_packed_fingerprint():
         if rc_command_lcmt._packed_fingerprint is None:
-            rc_command_lcmt._packed_fingerprint = struct.pack(">Q", rc_command_lcmt._get_hash_recursive([]))
+            rc_command_lcmt._packed_fingerprint = struct.pack(
+                ">Q", rc_command_lcmt._get_hash_recursive([])
+            )
         return rc_command_lcmt._packed_fingerprint
 
     _get_packed_fingerprint = staticmethod(_get_packed_fingerprint)

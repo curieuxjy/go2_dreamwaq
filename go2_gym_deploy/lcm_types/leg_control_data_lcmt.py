@@ -13,7 +13,16 @@ import struct
 class leg_control_data_lcmt(object):
     __slots__ = ["q", "qd", "p", "v", "tau_est", "timestamp_us", "id", "robot_id"]
 
-    __typenames__ = ["float", "float", "float", "float", "float", "int64_t", "int64_t", "int64_t"]
+    __typenames__ = [
+        "float",
+        "float",
+        "float",
+        "float",
+        "float",
+        "int64_t",
+        "int64_t",
+        "int64_t",
+    ]
 
     __dimensions__ = [[12], [12], [12], [12], [12], None, None, None]
 
@@ -34,15 +43,15 @@ class leg_control_data_lcmt(object):
         return buf.getvalue()
 
     def _encode_one(self, buf):
-        buf.write(struct.pack('>12f', *self.q[:12]))
-        buf.write(struct.pack('>12f', *self.qd[:12]))
-        buf.write(struct.pack('>12f', *self.p[:12]))
-        buf.write(struct.pack('>12f', *self.v[:12]))
-        buf.write(struct.pack('>12f', *self.tau_est[:12]))
+        buf.write(struct.pack(">12f", *self.q[:12]))
+        buf.write(struct.pack(">12f", *self.qd[:12]))
+        buf.write(struct.pack(">12f", *self.p[:12]))
+        buf.write(struct.pack(">12f", *self.v[:12]))
+        buf.write(struct.pack(">12f", *self.tau_est[:12]))
         buf.write(struct.pack(">qqq", self.timestamp_us, self.id, self.robot_id))
 
     def decode(data):
-        if hasattr(data, 'read'):
+        if hasattr(data, "read"):
             buf = data
         else:
             buf = BytesIO(data)
@@ -54,20 +63,23 @@ class leg_control_data_lcmt(object):
 
     def _decode_one(buf):
         self = leg_control_data_lcmt()
-        self.q = struct.unpack('>12f', buf.read(48))
-        self.qd = struct.unpack('>12f', buf.read(48))
-        self.p = struct.unpack('>12f', buf.read(48))
-        self.v = struct.unpack('>12f', buf.read(48))
-        self.tau_est = struct.unpack('>12f', buf.read(48))
+        self.q = struct.unpack(">12f", buf.read(48))
+        self.qd = struct.unpack(">12f", buf.read(48))
+        self.p = struct.unpack(">12f", buf.read(48))
+        self.v = struct.unpack(">12f", buf.read(48))
+        self.tau_est = struct.unpack(">12f", buf.read(48))
         self.timestamp_us, self.id, self.robot_id = struct.unpack(">qqq", buf.read(24))
         return self
 
     _decode_one = staticmethod(_decode_one)
 
     def _get_hash_recursive(parents):
-        if leg_control_data_lcmt in parents: return 0
-        tmphash = (0xa9a928b534bfc487) & 0xffffffffffffffff
-        tmphash = (((tmphash << 1) & 0xffffffffffffffff) + (tmphash >> 63)) & 0xffffffffffffffff
+        if leg_control_data_lcmt in parents:
+            return 0
+        tmphash = (0xA9A928B534BFC487) & 0xFFFFFFFFFFFFFFFF
+        tmphash = (
+            ((tmphash << 1) & 0xFFFFFFFFFFFFFFFF) + (tmphash >> 63)
+        ) & 0xFFFFFFFFFFFFFFFF
         return tmphash
 
     _get_hash_recursive = staticmethod(_get_hash_recursive)
@@ -75,7 +87,9 @@ class leg_control_data_lcmt(object):
 
     def _get_packed_fingerprint():
         if leg_control_data_lcmt._packed_fingerprint is None:
-            leg_control_data_lcmt._packed_fingerprint = struct.pack(">Q", leg_control_data_lcmt._get_hash_recursive([]))
+            leg_control_data_lcmt._packed_fingerprint = struct.pack(
+                ">Q", leg_control_data_lcmt._get_hash_recursive([])
+            )
         return leg_control_data_lcmt._packed_fingerprint
 
     _get_packed_fingerprint = staticmethod(_get_packed_fingerprint)

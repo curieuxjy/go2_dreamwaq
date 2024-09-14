@@ -102,7 +102,7 @@ def run_env(render=False, headless=False):
 
     # rewards.footswing_height = 0.09
     Cfg.reward_scales.feet_clearance = -0.0
-    Cfg.reward_scales.feet_clearance_cmd = -15.
+    Cfg.reward_scales.feet_clearance_cmd = -15.0
 
     # reward_scales.feet_contact_forces = -0.01
 
@@ -113,8 +113,8 @@ def run_env(render=False, headless=False):
 
     Cfg.reward_scales.hop_symmetry = 0.0
     Cfg.rewards.kappa_gait_probs = 0.07
-    Cfg.rewards.gait_force_sigma = 100.
-    Cfg.rewards.gait_vel_sigma = 10.
+    Cfg.rewards.gait_force_sigma = 100.0
+    Cfg.rewards.gait_vel_sigma = 10.0
 
     Cfg.reward_scales.tracking_contacts_shaped_force = 4.0
     Cfg.reward_scales.tracking_contacts_shaped_vel = 4.0
@@ -177,7 +177,7 @@ def run_env(render=False, headless=False):
     Cfg.domain_rand.randomize_friction = True
     Cfg.domain_rand.friction_range = [1.0, 1.01]
     Cfg.domain_rand.randomize_base_mass = True
-    Cfg.domain_rand.added_mass_range = [0., 6.]
+    Cfg.domain_rand.added_mass_range = [0.0, 6.0]
     Cfg.terrain.terrain_noise_magnitude = 0.0
     # Cfg.asset.fix_base_link = True
 
@@ -185,7 +185,7 @@ def run_env(render=False, headless=False):
     Cfg.domain_rand.randomize_lag_timesteps = True
     Cfg.control.control_type = "actuator_net"
 
-    env = VelocityTrackingEasyEnv(sim_device='cuda:0', headless=False, cfg=Cfg)
+    env = VelocityTrackingEasyEnv(sim_device="cuda:0", headless=False, cfg=Cfg)
     env.reset()
 
     if render and headless:
@@ -196,11 +196,11 @@ def run_env(render=False, headless=False):
         exit()
 
     for i in trange(1000, desc="Running"):
-        actions = 0. * torch.ones(env.num_envs, env.num_actions, device=env.device)
+        actions = 0.0 * torch.ones(env.num_envs, env.num_actions, device=env.device)
         obs, rew, done, info = env.step(actions)
 
     print("Done")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_env(render=True, headless=False)
