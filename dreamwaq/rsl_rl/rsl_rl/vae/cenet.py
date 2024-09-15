@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+
 class CenetRolloutStorage:
     class Transition:
         def __init__(self):
@@ -12,13 +13,15 @@ class CenetRolloutStorage:
         def clear(self):
             self.__init__()
 
-    def __init__(self,
-                 num_envs,
-                 num_transitions_per_env,
-                 obs_history_shape,
-                 true_vel_shape,
-                 true_onext_shape,
-                 device='cpu'):
+    def __init__(
+        self,
+        num_envs,
+        num_transitions_per_env,
+        obs_history_shape,
+        true_vel_shape,
+        true_onext_shape,
+        device="cpu",
+    ):
 
         self.device = device
 
@@ -26,14 +29,31 @@ class CenetRolloutStorage:
         self.true_vel_shape = true_vel_shape
         self.true_onext_shape = true_onext_shape
 
-        self.observation_histories = torch.zeros(num_transitions_per_env, num_envs, *obs_history_shape, device=self.device, requires_grad=False)
-        self.true_velocities = torch.zeros(num_transitions_per_env, num_envs, *true_vel_shape, device=self.device, requires_grad=False)
-        self.true_next_observations = torch.zeros(num_transitions_per_env, num_envs, *true_onext_shape, device=self.device, requires_grad=False)
+        self.observation_histories = torch.zeros(
+            num_transitions_per_env,
+            num_envs,
+            *obs_history_shape,
+            device=self.device,
+            requires_grad=False,
+        )
+        self.true_velocities = torch.zeros(
+            num_transitions_per_env,
+            num_envs,
+            *true_vel_shape,
+            device=self.device,
+            requires_grad=False,
+        )
+        self.true_next_observations = torch.zeros(
+            num_transitions_per_env,
+            num_envs,
+            *true_onext_shape,
+            device=self.device,
+            requires_grad=False,
+        )
 
         self.num_transitions_per_env = num_transitions_per_env
         self.num_envs = num_envs
         self.step = 0
-
 
     def add_transitions_before_action(self, transition: Transition):
         if self.step >= self.num_transitions_per_env:
@@ -55,7 +75,9 @@ class CenetRolloutStorage:
     def mini_batch_generator(self, num_mini_batches, num_epochs=8):
         batch_size = self.num_envs * self.num_transitions_per_env
         mini_batch_size = batch_size // num_mini_batches
-        indices = torch.randperm(num_mini_batches * mini_batch_size, requires_grad=False, device=self.device)
+        indices = torch.randperm(
+            num_mini_batches * mini_batch_size, requires_grad=False, device=self.device
+        )
 
         observation_histories = self.observation_histories.flatten(0, 1)
         true_velocities = self.true_velocities.flatten(0, 1)
@@ -76,23 +98,25 @@ class CenetRolloutStorage:
 
 
 class CENet(nn.Module):
-    def __init__(self,
-                 num_learning_epochs=1,
-                 num_mini_batches=1,
-                 input_dim=225,  # 42 x 5
-                 hidden_dim1=128,
-                 hidden_dim2=64,
-                 hidden_dim3=48,
-                 latent_dim1=35,  # 3 + 16 x 2
-                 latent_dim2=19,
-                 output_dim=45,
-                 beta=1,
-                 beta_limit=4,
-                 learning_rate=0.001,
-                 min_lr=0.001,
-                 patience = 100,
-                 factor = 0.8,
-                 device='cpu'):
+    def __init__(
+        self,
+        num_learning_epochs=1,
+        num_mini_batches=1,
+        input_dim=225,  # 42 x 5
+        hidden_dim1=128,
+        hidden_dim2=64,
+        hidden_dim3=48,
+        latent_dim1=35,  # 3 + 16 x 2
+        latent_dim2=19,
+        output_dim=45,
+        beta=1,
+        beta_limit=4,
+        learning_rate=0.001,
+        min_lr=0.001,
+        patience=100,
+        factor=0.8,
+        device="cpu",
+    ):
 
         super().__init__()
 
@@ -104,7 +128,7 @@ class CENet(nn.Module):
             nn.ELU(),
             nn.Linear(in_features=hidden_dim1, out_features=hidden_dim2),
             nn.ELU(),
-            nn.Linear(in_features=hidden_dim2, out_features=latent_dim1)
+            nn.Linear(in_features=hidden_dim2, out_features=latent_dim1),
         )
 
         # Decoder
@@ -115,10 +139,10 @@ class CENet(nn.Module):
             nn.ELU(),
             nn.Linear(in_features=hidden_dim1, out_features=hidden_dim3),
             nn.ELU(),
-            nn.Linear(in_features=hidden_dim3, out_features=output_dim)
+            nn.Linear(in_features=hidden_dim3, out_features=output_dim),
         )
 
-        print('{::^60}'.format(' CENet Structure '))
+        print("{::^60}".format(" CENet Structure "))
         print(f"Encoder MLP: {self.encoder}")
         print(f"Decoder MLP: {self.decoder}")
 
@@ -137,22 +161,31 @@ class CENet(nn.Module):
         self.transition = CenetRolloutStorage.Transition()
 
         self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer=self.optimizer,
-                                                              mode="min",
-                                                              factor=self.factor,
-                                                              patience=self.patience,
-                                                              min_lr=self.min_lr)
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer=self.optimizer,
+            mode="min",
+            factor=self.factor,
+            patience=self.patience,
+            min_lr=self.min_lr,
+        )
 
-    def init_storage(self,
-                     num_envs,
-                     num_transitions_per_env,
-                     obs_history_shape,
-                     true_vel_shape,
-                     true_onext_shape
-                     ):
+    def init_storage(
+        self,
+        num_envs,
+        num_transitions_per_env,
+        obs_history_shape,
+        true_vel_shape,
+        true_onext_shape,
+    ):
 
-        self.storage = CenetRolloutStorage(num_envs, num_transitions_per_env, obs_history_shape,
-                                           true_vel_shape, true_onext_shape, self.device)
+        self.storage = CenetRolloutStorage(
+            num_envs,
+            num_transitions_per_env,
+            obs_history_shape,
+            true_vel_shape,
+            true_onext_shape,
+            self.device,
+        )
 
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar).requires_grad_(True)
@@ -192,7 +225,6 @@ class CENet(nn.Module):
         # decoder process
         return self.decoder(latent), est_vel, mu, logvar, context_vec  # est_onext
 
-
     def before_action(self, obs_history, true_vel):
 
         est_next_obs, est_vel, mu, logvar, context_vec = self.forward(obs_history)
@@ -211,7 +243,6 @@ class CENet(nn.Module):
         self.storage.add_transitions_after_action(self.transition)
         self.transition.clear()
 
-
     def update(self):
 
         mean_total_loss = 0
@@ -220,13 +251,21 @@ class CENet(nn.Module):
         mean_kl_loss = 0
 
         # Use the mini batch generator to iterate over the data
-        generator = self.storage.mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
+        generator = self.storage.mini_batch_generator(
+            self.num_mini_batches, self.num_learning_epochs
+        )
 
         # for est_vel_batch, true_vel_batch, est_onext_batch, true_onext_batch, mu_batch, logvar_batch in generator:
         for obs_history_batch, true_vel_batch, true_onext_batch in generator:
 
             # model의 forward 과정이 여기에 있어야
-            est_onext_batch, est_vel_batch, mu_batch, logvar_batch, context_vec_batch = self.forward(obs_history_batch)
+            (
+                est_onext_batch,
+                est_vel_batch,
+                mu_batch,
+                logvar_batch,
+                context_vec_batch,
+            ) = self.forward(obs_history_batch)
 
             # loss calculation
             mse_loss = nn.MSELoss()
@@ -275,6 +314,7 @@ class CENet(nn.Module):
         self.beta = min(self.beta * 1.01, self.beta_limit)
         return mean_total_loss, mean_vel_loss, mean_recon_loss, mean_kl_loss
 
+
 # --- for testing the code ---
 def simulate_data_and_train(model):
     # Simulate data
@@ -288,12 +328,16 @@ def simulate_data_and_train(model):
         for _ in range(num_steps):
             # initial state O_{0 or t}
             obs = torch.randn(num_envs, 45).to(device)  # Random observation
-            obs_his = torch.zeros(num_envs, 225).to(device)  # Random observation history
+            obs_his = torch.zeros(num_envs, 225).to(
+                device
+            )  # Random observation history
             obs_his[:, -45:] = obs
             true_vel = torch.randn(num_envs, 3).to(device)
 
             # CENet process w/ O_{t}
-            est_next_obs, est_vel, mu, logvar, context_vec = model.before_action(obs_his, true_vel)
+            est_next_obs, est_vel, mu, logvar, context_vec = model.before_action(
+                obs_his, true_vel
+            )
 
             # ACTION
 
@@ -311,7 +355,7 @@ def simulate_data_and_train(model):
 
 
 if __name__ == "__main__":
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
 
     # Initialize CENet

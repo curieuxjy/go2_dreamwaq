@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: BSD-3-Clause
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
@@ -40,20 +40,24 @@ import torch
 import yaml
 import wandb
 
+
 def save_config(env_cfg, train_cfg, config_dir):
     env_cfg_dict = dict(helpers.class_to_dict(env_cfg))
     train_cfg_dict = dict(helpers.class_to_dict(train_cfg))
     if not os.path.exists(config_dir):
         os.makedirs(config_dir)
-    with open(config_dir+'/env_cfg.yaml', 'w') as file:
+    with open(config_dir + "/env_cfg.yaml", "w") as file:
         yaml.dump(env_cfg_dict, file, default_flow_style=False)
-    with open(config_dir+'/train_cfg.yaml', 'w') as file:
+    with open(config_dir + "/train_cfg.yaml", "w") as file:
         yaml.dump(train_cfg_dict, file, default_flow_style=False)
     return env_cfg_dict, train_cfg_dict
 
+
 def train(args):
     env, env_cfg = task_registry.make_env(name=args.task, args=args)
-    ppo_runner, train_cfg = task_registry.make_alg_runner(env=env, name=args.task, args=args)
+    ppo_runner, train_cfg = task_registry.make_alg_runner(
+        env=env, name=args.task, args=args
+    )
 
     print(">>> SAVED CONFIG")
     # env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
@@ -61,22 +65,26 @@ def train(args):
     env_cfg_dict, train_cfg_dict = save_config(env_cfg, train_cfg, config_dir)
 
     if WANDB:
-        wandb.init(project="main",
-                   entity="dreamwaq",
-                   config={**env_cfg_dict, **train_cfg_dict})
+        wandb.init(
+            project="main", entity="dreamwaq", config={**env_cfg_dict, **train_cfg_dict}
+        )
         wandb.tensorboard.patch(save=False, tensorboard_x=True)
         # set run name
-        wandb.run.name = args.task + "_" + str(env_cfg_dict["seed"]) # a1_base / a1_waq + seed_num
+        wandb.run.name = (
+            args.task + "_" + str(env_cfg_dict["seed"])
+        )  # a1_base / a1_waq + seed_num
         wandb.run.save()
 
-    ppo_runner.learn(num_learning_iterations=train_cfg.runner.max_iterations, init_at_random_ep_len=True)
+    ppo_runner.learn(
+        num_learning_iterations=train_cfg.runner.max_iterations,
+        init_at_random_ep_len=True,
+    )
 
     if WANDB:
         wandb.finish()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     WANDB = True
     args = get_args()
     train(args)
-

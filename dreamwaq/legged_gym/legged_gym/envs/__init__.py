@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: BSD-3-Clause
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
@@ -32,29 +32,81 @@
 # from legged_gym.envs.a1.a1_config import A1RoughCfg, A1RoughCfgPPO
 from .base.legged_robot import LeggedRobot
 from .anymal_c.anymal import Anymal
-from .anymal_c.mixed_terrains.anymal_c_rough_config import AnymalCRoughCfg, AnymalCRoughCfgPPO
+from .anymal_c.mixed_terrains.anymal_c_rough_config import (
+    AnymalCRoughCfg,
+    AnymalCRoughCfgPPO,
+)
 from .anymal_c.flat.anymal_c_flat_config import AnymalCFlatCfg, AnymalCFlatCfgPPO
 from .anymal_b.anymal_b_config import AnymalBRoughCfg, AnymalBRoughCfgPPO
 from .cassie.cassie import Cassie
 from .cassie.cassie_config import CassieRoughCfg, CassieRoughCfgPPO
-from .a1.a1_config import A1RoughCfg, A1RoughOracleCfg, A1RoughBaseCfg, A1RoughWaqCfg, A1RoughEstCfg, \
-    A1RoughCfgPPO, A1RoughOracleCfgPPO, A1RoughBaseCfgPPO, A1RoughCfgWaqPPO, A1RoughCfgEstPPO
+from .a1.a1_config import (
+    A1RoughCfg,
+    A1RoughOracleCfg,
+    A1RoughBaseCfg,
+    A1RoughWaqCfg,
+    A1RoughEstCfg,
+    A1RoughCfgPPO,
+    A1RoughOracleCfgPPO,
+    A1RoughBaseCfgPPO,
+    A1RoughCfgWaqPPO,
+    A1RoughCfgEstPPO,
+)
+
+from .go2.go2_config import (
+    Go2RoughCfg,
+    Go2RoughOracleCfg,
+    Go2RoughBaseCfg,
+    Go2RoughWaqCfg,
+    Go2RoughEstCfg,
+    Go2RoughCfgPPO,
+    Go2RoughOracleCfgPPO,
+    Go2RoughBaseCfgPPO,
+    Go2RoughCfgWaqPPO,
+    Go2RoughCfgEstPPO,
+)
 
 import os
 from legged_gym.utils.task_registry import task_registry
 
 # LeggedRobotCfg -> A1RoughCfg / LeggedRobotCfgPPO -> A1RoughCfgPPO
-task_registry.register("a1_default", LeggedRobot, A1RoughCfg(), A1RoughCfgPPO()) # rew_default(not related with paper)
+task_registry.register(
+    "a1_default", LeggedRobot, A1RoughCfg(), A1RoughCfgPPO()
+)  # rew_default(not related with paper)
 # A1RoughCfg -> A1RoughBaseCfg / A1RoughCfgPPO -> A1RoughBaseCfgPPO
-task_registry.register("a1_base", LeggedRobot, A1RoughBaseCfg(), A1RoughBaseCfgPPO()) # blind base // symmetric
+task_registry.register(
+    "a1_base", LeggedRobot, A1RoughBaseCfg(), A1RoughBaseCfgPPO()
+)  # blind base // symmetric
 # A1RoughBaseCfg -> A1RoughOracleCfg / A1RoughCfgPPO -> A1RoughOracleCfgPPO
-task_registry.register("a1_oracle", LeggedRobot, A1RoughOracleCfg(), A1RoughOracleCfgPPO()) # oracle // symmetric
+task_registry.register(
+    "a1_oracle", LeggedRobot, A1RoughOracleCfg(), A1RoughOracleCfgPPO()
+)  # oracle // symmetric
 # A1RoughBaseCfg -> A1RoughWaqCfg / A1RoughCfgPPO -> A1RoughOracleCfgPPO
-task_registry.register("a1_waq", LeggedRobot, A1RoughWaqCfg(), A1RoughCfgWaqPPO()) # implicitly // asymmetric
-task_registry.register("a1_est", LeggedRobot, A1RoughEstCfg(), A1RoughCfgEstPPO()) # implicitly // asymmetric
+task_registry.register(
+    "a1_waq", LeggedRobot, A1RoughWaqCfg(), A1RoughCfgWaqPPO()
+)  # implicitly // asymmetric
+task_registry.register(
+    "a1_est", LeggedRobot, A1RoughEstCfg(), A1RoughCfgEstPPO()
+)  # implicitly // asymmetric
 
 
-task_registry.register("anymal_c_rough", Anymal, AnymalCRoughCfg(), AnymalCRoughCfgPPO())
+task_registry.register(
+    "anymal_c_rough", Anymal, AnymalCRoughCfg(), AnymalCRoughCfgPPO()
+)
 task_registry.register("anymal_c_flat", Anymal, AnymalCFlatCfg(), AnymalCFlatCfgPPO())
 task_registry.register("anymal_b", Anymal, AnymalBRoughCfg(), AnymalBRoughCfgPPO())
 task_registry.register("cassie", Cassie, CassieRoughCfg(), CassieRoughCfgPPO())
+
+task_registry.register(
+    "go2_default", LeggedRobot, Go2RoughCfg(), Go2RoughCfgPPO()
+)  # rew_default(not related with paper)
+task_registry.register(
+    "go2_base", LeggedRobot, Go2RoughBaseCfg(), Go2RoughBaseCfgPPO()
+)  # blind base // symmetric
+task_registry.register(
+    "go2_oracle", LeggedRobot, Go2RoughOracleCfg(), Go2RoughOracleCfgPPO()
+)  # oracle // symmetric
+task_registry.register(
+    "go2_waq", LeggedRobot, Go2RoughWaqCfg(), Go2RoughCfgWaqPPO()
+)  # implicitly // asymmetric
+# task_registry.register("go2_est", LeggedRobot, A1RoughEstCfg(), A1RoughCfgEstPPO()) # implicitly // asymmetric

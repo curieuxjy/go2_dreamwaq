@@ -1,20 +1,26 @@
 import unittest
 import torch
 
+
 class RunningMeanStd(torch.nn.Module):
-    def __init__(self,
-                 shape,
-                 epsilon=1e-4,
-                 device = "cpu"):
+    def __init__(self, shape, epsilon=1e-4, device="cpu"):
         super(RunningMeanStd, self).__init__()
 
         self.device = device
-        self.mean = torch.nn.Parameter(torch.zeros(shape), requires_grad=False).to(self.device)
-        self.var = torch.nn.Parameter(torch.zeros(shape), requires_grad=False).to(self.device)
+        self.mean = torch.nn.Parameter(torch.zeros(shape), requires_grad=False).to(
+            self.device
+        )
+        self.var = torch.nn.Parameter(torch.zeros(shape), requires_grad=False).to(
+            self.device
+        )
         self.count = epsilon  # Changed from torch.tensor to float
 
     def update(self, x):
-        batch_mean, batch_std, batch_count = x.mean(axis=0).to(self.device), x.std(axis=0).to(self.device), x.shape[0]
+        batch_mean, batch_std, batch_count = (
+            x.mean(axis=0).to(self.device),
+            x.std(axis=0).to(self.device),
+            x.shape[0],
+        )
         batch_var = torch.square(batch_std)
         self.update_from_moments(batch_mean, batch_var, batch_count)
 
@@ -23,8 +29,8 @@ class RunningMeanStd(torch.nn.Module):
         tot_count = self.count + batch_count
 
         new_mean = self.mean + delta * batch_count / tot_count
-        m_a = self.var * self.count   # existed data
-        m_b = batch_var * batch_count # new data(added)
+        m_a = self.var * self.count  # existed data
+        m_b = batch_var * batch_count  # new data(added)
         M2 = (
             m_a
             + m_b
@@ -55,8 +61,14 @@ class TestRunningMeanStd(unittest.TestCase):
         x = torch.randn(100, 10)
         self.running_mean_std.update(x)
 
-        self.assertTrue(torch.allclose(self.running_mean_std.mean, x.mean(axis=0), atol=1e-5))
-        self.assertTrue(torch.allclose(self.running_mean_std.var, torch.square(x.std(axis=0)), atol=1e-5))
+        self.assertTrue(
+            torch.allclose(self.running_mean_std.mean, x.mean(axis=0), atol=1e-5)
+        )
+        self.assertTrue(
+            torch.allclose(
+                self.running_mean_std.var, torch.square(x.std(axis=0)), atol=1e-5
+            )
+        )
         self.assertAlmostEqual(self.running_mean_std.count, 100 + 1e-4, places=8)
 
     def test_update_from_moments(self):
@@ -65,10 +77,14 @@ class TestRunningMeanStd(unittest.TestCase):
         batch_count = 100
         self.running_mean_std.update_from_moments(batch_mean, batch_var, batch_count)
 
-        self.assertTrue(torch.allclose(self.running_mean_std.mean, batch_mean, atol=1e-5))
+        self.assertTrue(
+            torch.allclose(self.running_mean_std.mean, batch_mean, atol=1e-5)
+        )
         self.assertTrue(torch.allclose(self.running_mean_std.var, batch_var, atol=1e-5))
-        self.assertAlmostEqual(self.running_mean_std.count, batch_count + 1e-4, places=8)
+        self.assertAlmostEqual(
+            self.running_mean_std.count, batch_count + 1e-4, places=8
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+
 class EstNetRolloutStorage:
     class Transition:
         def __init__(self):
@@ -11,19 +12,33 @@ class EstNetRolloutStorage:
         def clear(self):
             self.__init__()
 
-    def __init__(self,
-                 num_envs,
-                 num_transitions_per_env,
-                 obs_history_shape,
-                 true_vel_shape,
-                 device='cpu'):
+    def __init__(
+        self,
+        num_envs,
+        num_transitions_per_env,
+        obs_history_shape,
+        true_vel_shape,
+        device="cpu",
+    ):
 
         self.device = device
 
         self.obs_history_shape = obs_history_shape
         self.true_vel_shape = true_vel_shape
-        self.observation_histories = torch.zeros(num_transitions_per_env, num_envs, *obs_history_shape, device=self.device, requires_grad=False)
-        self.true_velocities = torch.zeros(num_transitions_per_env, num_envs, *true_vel_shape, device=self.device, requires_grad=False)
+        self.observation_histories = torch.zeros(
+            num_transitions_per_env,
+            num_envs,
+            *obs_history_shape,
+            device=self.device,
+            requires_grad=False,
+        )
+        self.true_velocities = torch.zeros(
+            num_transitions_per_env,
+            num_envs,
+            *true_vel_shape,
+            device=self.device,
+            requires_grad=False,
+        )
 
         self.num_transitions_per_env = num_transitions_per_env
         self.num_envs = num_envs
@@ -44,7 +59,9 @@ class EstNetRolloutStorage:
     def mini_batch_generator(self, num_mini_batches, num_epochs=8):
         batch_size = self.num_envs * self.num_transitions_per_env
         mini_batch_size = batch_size // num_mini_batches
-        indices = torch.randperm(num_mini_batches * mini_batch_size, requires_grad=False, device=self.device)
+        indices = torch.randperm(
+            num_mini_batches * mini_batch_size, requires_grad=False, device=self.device
+        )
 
         observation_histories = self.observation_histories.flatten(0, 1)
         true_velocities = self.true_velocities.flatten(0, 1)
@@ -63,18 +80,20 @@ class EstNetRolloutStorage:
 
 
 class EstNet(nn.Module):
-    def __init__(self,
-                 num_learning_epochs=1,
-                 num_mini_batches=1,
-                 input_dim=225,  # 42 x 5
-                 hidden_dim1=128,
-                 hidden_dim2=64,
-                 latent_dim1=3,
-                 learning_rate=0.001,
-                 min_lr=0.001,
-                 patience=100,
-                 factor=0.8,
-                 device='cpu'):
+    def __init__(
+        self,
+        num_learning_epochs=1,
+        num_mini_batches=1,
+        input_dim=225,  # 42 x 5
+        hidden_dim1=128,
+        hidden_dim2=64,
+        latent_dim1=3,
+        learning_rate=0.001,
+        min_lr=0.001,
+        patience=100,
+        factor=0.8,
+        device="cpu",
+    ):
 
         super().__init__()
 
@@ -86,10 +105,10 @@ class EstNet(nn.Module):
             nn.ELU(),
             nn.Linear(in_features=hidden_dim1, out_features=hidden_dim2),
             nn.ELU(),
-            nn.Linear(in_features=hidden_dim2, out_features=latent_dim1)
+            nn.Linear(in_features=hidden_dim2, out_features=latent_dim1),
         )
 
-        print('{::^60}'.format(' EstNet Structure '))
+        print("{::^60}".format(" EstNet Structure "))
         print(f"Estimator MLP: {self.estimator}")
 
         self.num_mini_batches = num_mini_batches
@@ -105,20 +124,28 @@ class EstNet(nn.Module):
         self.transition = EstNetRolloutStorage.Transition()
 
         self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer=self.optimizer,
-                                                              mode="min",
-                                                              factor=self.factor,
-                                                              patience=self.patience,
-                                                              min_lr=self.min_lr)
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer=self.optimizer,
+            mode="min",
+            factor=self.factor,
+            patience=self.patience,
+            min_lr=self.min_lr,
+        )
 
-    def init_storage(self,
-                     num_envs,
-                     num_transitions_per_env,
-                     obs_history_shape,
-                     true_vel_shape,
-                     ):
-        self.storage = EstNetRolloutStorage(num_envs, num_transitions_per_env, obs_history_shape, true_vel_shape, self.device)
-
+    def init_storage(
+        self,
+        num_envs,
+        num_transitions_per_env,
+        obs_history_shape,
+        true_vel_shape,
+    ):
+        self.storage = EstNetRolloutStorage(
+            num_envs,
+            num_transitions_per_env,
+            obs_history_shape,
+            true_vel_shape,
+            self.device,
+        )
 
     def train_mode(self):
         self.estimator.train()
@@ -138,12 +165,14 @@ class EstNet(nn.Module):
         self.storage.add_transitions_before_action(self.transition)
         self.transition.clear()
         return est_vel
-  
+
     def update(self):
         mean_vel_loss = 0
 
         # Use the mini batch generator to iterate over the data
-        generator = self.storage.mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
+        generator = self.storage.mini_batch_generator(
+            self.num_mini_batches, self.num_learning_epochs
+        )
 
         # for est_vel_batch, true_vel_batch, est_onext_batch, true_onext_batch, mu_batch, logvar_batch in generator:
         for obs_history_batch, true_vel_batch in generator:

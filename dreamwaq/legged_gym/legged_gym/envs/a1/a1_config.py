@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: BSD-3-Clause
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
@@ -44,34 +44,32 @@ class A1RoughCfg(LeggedRobotCfg):
         # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise
         num_privileged_obs = None  # d(3) + h(187)
         num_actions = 12
-        env_spacing = 3.  # not used with heightfields/trimeshes
+        env_spacing = 3.0  # not used with heightfields/trimeshes
         send_timeouts = True  # send time out information to the algorithm
         episode_length_s = 20  # episode length in seconds
 
     class init_state(LeggedRobotCfg.init_state):
         pos = [0.0, 0.0, 0.42]  # x,y,z [m]
         default_joint_angles = {  # = target angles [rad] when action = 0.0
-            'FL_hip_joint': 0.1,  # [rad]
-            'RL_hip_joint': 0.1,  # [rad]
-            'FR_hip_joint': -0.1,  # [rad]
-            'RR_hip_joint': -0.1,  # [rad]
-
-            'FL_thigh_joint': 0.8,  # [rad]
-            'RL_thigh_joint': 1.,  # [rad]
-            'FR_thigh_joint': 0.8,  # [rad]
-            'RR_thigh_joint': 1.,  # [rad]
-
-            'FL_calf_joint': -1.5,  # [rad]
-            'RL_calf_joint': -1.5,  # [rad]
-            'FR_calf_joint': -1.5,  # [rad]
-            'RR_calf_joint': -1.5,  # [rad]
+            "FL_hip_joint": 0.1,  # [rad]
+            "RL_hip_joint": 0.1,  # [rad]
+            "FR_hip_joint": -0.1,  # [rad]
+            "RR_hip_joint": -0.1,  # [rad]
+            "FL_thigh_joint": 0.8,  # [rad]
+            "RL_thigh_joint": 1.0,  # [rad]
+            "FR_thigh_joint": 0.8,  # [rad]
+            "RR_thigh_joint": 1.0,  # [rad]
+            "FL_calf_joint": -1.5,  # [rad]
+            "RL_calf_joint": -1.5,  # [rad]
+            "FR_calf_joint": -1.5,  # [rad]
+            "RR_calf_joint": -1.5,  # [rad]
         }
 
     class control(LeggedRobotCfg.control):
         # PD Drive parameters:
-        control_type = 'P'
-        stiffness = {'joint': 28.}  # [N*m/rad] # checked
-        damping = {'joint': 0.7}  # [N*m*s/rad] # checked
+        control_type = "P"
+        stiffness = {"joint": 28.0}  # [N*m/rad] # checked
+        damping = {"joint": 0.7}  # [N*m*s/rad] # checked
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
@@ -80,11 +78,11 @@ class A1RoughCfg(LeggedRobotCfg):
     class sim(LeggedRobotCfg.sim):
         dt = 0.005  # checked 200Hz
         substeps = 1
-        gravity = [0., 0., -9.81]  # [m/s^2]
+        gravity = [0.0, 0.0, -9.81]  # [m/s^2]
         up_axis = 1  # 0 is y, 1 is z
 
     class asset(LeggedRobotCfg.asset):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/a1/urdf/a1.urdf'
+        file = "{LEGGED_GYM_ROOT_DIR}/resources/robots/a1/urdf/a1.urdf"
         name = "a1"
         foot_name = "foot"
         penalize_contacts_on = ["thigh", "calf"]
@@ -93,27 +91,28 @@ class A1RoughCfg(LeggedRobotCfg):
 
     class commands(LeggedRobotCfg.commands):
         inference_policy = False
-        inference_command = "x" # "y", "mix"
+        inference_command = "x"  # "y", "mix"
         curriculum = True
-        max_curriculum = 1.
-        num_commands = 4 # default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
-        resampling_time = 10. # time before command are changed[s]
-        heading_command = True # if true: compute ang vel command from heading error
+        max_curriculum = 1.0
+        num_commands = 4  # default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
+        resampling_time = 10.0  # time before command are changed[s]
+        heading_command = True  # if true: compute ang vel command from heading error
+
         class ranges(LeggedRobotCfg.commands.ranges):
-            lin_vel_x = [-1.0, 1.0] # min max [m/s]
-            lin_vel_y = [-1.0, 1.0]   # min max [m/s]
-            ang_vel_yaw = [-1, 1]    # min max [rad/s]
+            lin_vel_x = [-1.0, 1.0]  # min max [m/s]
+            lin_vel_y = [-1.0, 1.0]  # min max [m/s]
+            ang_vel_yaw = [-1, 1]  # min max [rad/s]
             heading = [-3.14, 3.14]
 
     class domain_rand(LeggedRobotCfg.domain_rand):
         system_delay = True
         push_robots = True
-        push_interval_s = 1.
-        max_push_vel_xy = 1.
+        push_interval_s = 1.0
+        max_push_vel_xy = 1.0
         randomize_friction = True
         friction_range = [0.2, 1.25]  # checked
         randomize_base_mass = True
-        added_mass_range = [-1., 2.]  # checked
+        added_mass_range = [-1.0, 2.0]  # checked
         randomize_p_gains = True
         p_gains_range = [0.9, 1.1]
         randomize_d_gains = True
@@ -124,8 +123,9 @@ class A1RoughCfg(LeggedRobotCfg):
         com_range = [-0.05, 0.05]
 
     class rewards(LeggedRobotCfg.rewards):
-        """ CAUTION: this reward configuration is NOT from the paper """
-        only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
+        """CAUTION: this reward configuration is NOT from the paper"""
+
+        only_positive_rewards = False  # if true negative total rewards are clipped at zero (avoids early termination problems)
         soft_dof_pos_limit = 0.9
         base_height_target = 0.25
 
@@ -145,8 +145,9 @@ class A1RoughCfgPPO(LeggedRobotCfgPPO):
 
     class runner(LeggedRobotCfgPPO.runner):
         ada_boot = False
-        run_name = 'default'
-        experiment_name = 'rough_a1'
+        run_name = "default"
+        experiment_name = "rough_a1"
+
 
 class A1RoughBaseCfg(A1RoughCfg):
 
@@ -158,8 +159,9 @@ class A1RoughBaseCfg(A1RoughCfg):
         num_privileged_obs = None  # d(3) + h(187)
 
     class rewards(A1RoughCfg.rewards):
-        """ SAME reward functions with the paper """
-        only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
+        """SAME reward functions with the paper"""
+
+        only_positive_rewards = False  # if true negative total rewards are clipped at zero (avoids early termination problems)
         desired_foot_height = 0.12
 
         class scales(A1RoughCfg.rewards.scales):
@@ -177,13 +179,12 @@ class A1RoughBaseCfg(A1RoughCfg):
             foot_clearance = -0.01
             termination = -0.0
             torques = -0.0
-            dof_vel = -0.
+            dof_vel = -0.0
             feet_air_time = 0.0
-            collision = -0.
+            collision = -0.0
             feet_stumble = -0.0
-            stand_still = -0.
+            stand_still = -0.0
             dof_pos_limits = -0.0
-
 
 
 class A1RoughBaseCfgPPO(A1RoughCfgPPO):
@@ -194,8 +195,8 @@ class A1RoughBaseCfgPPO(A1RoughCfgPPO):
         privileged_obs_rms = False
         true_vel_rms = False
         ada_boot = False
-        run_name = 'base'
-        experiment_name = 'rough_a1'
+        run_name = "base"
+        experiment_name = "rough_a1"
 
 
 class A1RoughOracleCfg(A1RoughBaseCfg):
@@ -208,8 +209,9 @@ class A1RoughOracleCfg(A1RoughBaseCfg):
         num_privileged_obs = 190  # d(3) + h(187)
 
     class rewards(A1RoughBaseCfg.rewards):
-        """ SAME reward functions with the paper """
-        only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
+        """SAME reward functions with the paper"""
+
+        only_positive_rewards = False  # if true negative total rewards are clipped at zero (avoids early termination problems)
 
 
 class A1RoughOracleCfgPPO(A1RoughBaseCfgPPO):
@@ -220,8 +222,8 @@ class A1RoughOracleCfgPPO(A1RoughBaseCfgPPO):
         privileged_obs_rms = True
         true_vel_rms = False
         ada_boot = False
-        run_name = 'oracle'
-        experiment_name = 'rough_a1'
+        run_name = "oracle"
+        experiment_name = "rough_a1"
 
 
 class A1RoughWaqCfg(A1RoughBaseCfg):
@@ -237,14 +239,18 @@ class A1RoughWaqCfg(A1RoughBaseCfg):
         num_privileged_obs = 190  # d(3) + h(187)
 
     class rewards(A1RoughBaseCfg.rewards):
-        """ SAME reward functions with the paper """
-        only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
+        """SAME reward functions with the paper"""
+
+        only_positive_rewards = False  # if true negative total rewards are clipped at zero (avoids early termination problems)
+
     class normalization(A1RoughBaseCfg.normalization):
         fixed_norm = False
 
     class noise(A1RoughBaseCfg.noise):
         add_noise = False
         noise_level = 1.0  # scales other values
+
+
 class A1RoughCfgWaqPPO(A1RoughBaseCfgPPO):
     seed = 1
 
@@ -261,9 +267,9 @@ class A1RoughCfgWaqPPO(A1RoughBaseCfgPPO):
         privileged_obs_rms = True
         true_vel_rms = True
         ada_boot = True
-        vae_class_name = 'CENet'
-        run_name = 'waq'
-        experiment_name = 'rough_a1_waq'
+        vae_class_name = "CENet"
+        run_name = "waq"
+        experiment_name = "rough_a1_waq"
 
 
 class A1RoughEstCfg(A1RoughBaseCfg):
@@ -278,12 +284,14 @@ class A1RoughEstCfg(A1RoughBaseCfg):
         num_privileged_obs = 190  # d(3) + h(187)
 
     class rewards(A1RoughBaseCfg.rewards):
-        """ SAME reward functions with the paper """
-        only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
+        """SAME reward functions with the paper"""
+
+        only_positive_rewards = False  # if true negative total rewards are clipped at zero (avoids early termination problems)
 
     class noise(A1RoughBaseCfg.noise):
         add_noise = False
         noise_level = 1.0  # scales other values
+
 
 class A1RoughCfgEstPPO(A1RoughBaseCfgPPO):
     seed = 1
@@ -298,6 +306,6 @@ class A1RoughCfgEstPPO(A1RoughBaseCfgPPO):
         rms = True
         true_vel_rms = False
         ada_boot = True
-        vae_class_name = 'EstNet'
-        run_name = 'est'
-        experiment_name = 'rough_a1_est'
+        vae_class_name = "EstNet"
+        run_name = "est"
+        experiment_name = "rough_a1_est"
