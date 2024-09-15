@@ -289,13 +289,13 @@ class LeggedRobot(BaseTask):
             self.episodic_reward_each_agent[:, rew_i] += rewards
 
             average = torch.mean(rewards) / self.max_episode_length_s
-            cv = torch.std(rewards) / (torch.abs(average) + 1e-8)
+            cv = torch.std(rewards, unbiased=False) / (torch.abs(average) + 1e-8)
 
             self.extras["episode"]["rew_" + key] = average
             self.extras["reward_cv"]["rew_" + key] = cv
             self.episode_sums[key][env_ids] = 0.0
 
-        std_reward = torch.std(torch.sum(self.episodic_reward_each_agent, dim=1))
+        std_reward = torch.std(torch.sum(self.episodic_reward_each_agent, dim=1), unbiased=False)
         mean_reward = torch.mean(torch.sum(self.episodic_reward_each_agent, dim=1))
 
         if self.episodic_reward_each_agent.shape[0] == 1:
