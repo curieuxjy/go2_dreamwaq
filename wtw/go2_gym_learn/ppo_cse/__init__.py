@@ -4,12 +4,12 @@ import copy
 import os
 
 import torch
+
 # from ml_logger import logger
 # from params_proto import PrefixProto
 
 from .actor_critic import ActorCritic
 from .rollout_storage import RolloutStorage
-
 
 
 def class_to_dict(obj) -> dict:
@@ -333,15 +333,11 @@ class Runner:
                 adaptation_module = copy.deepcopy(
                     self.alg.actor_critic.adaptation_module
                 ).to("cpu")
-                traced_script_adaptation_module = torch.jit.script(
-                    adaptation_module
-                )
+                traced_script_adaptation_module = torch.jit.script(adaptation_module)
                 traced_script_adaptation_module.save(adaptation_module_path)
 
                 body_path = f"{path}/body_latest.jit"
-                body_model = copy.deepcopy(self.alg.actor_critic.actor_body).to(
-                    "cpu"
-                )
+                body_model = copy.deepcopy(self.alg.actor_critic.actor_body).to("cpu")
                 traced_script_body_module = torch.jit.script(body_model)
                 traced_script_body_module.save(body_path)
 

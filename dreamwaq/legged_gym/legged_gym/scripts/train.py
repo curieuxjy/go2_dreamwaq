@@ -66,7 +66,9 @@ def train(args):
 
     if WANDB:
         wandb.init(
-            project="dreamwaq", entity="curieuxjy", config={**env_cfg_dict, **train_cfg_dict}
+            project="dreamwaq",
+            entity="curieuxjy",
+            config={**env_cfg_dict, **train_cfg_dict},
         )
         wandb.tensorboard.patch(save=False, tensorboard_x=True)
         # set run name

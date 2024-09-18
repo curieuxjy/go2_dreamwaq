@@ -254,12 +254,14 @@ class Go2RoughEstCfg(Go2RoughBaseCfg):
         num_privileged_obs = 190  # d(3) + h(187)
 
     class rewards(Go2RoughBaseCfg.rewards):
-        """ SAME reward functions with the paper """
-        only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
+        """SAME reward functions with the paper"""
+
+        only_positive_rewards = False  # if true negative total rewards are clipped at zero (avoids early termination problems)
 
     class noise(Go2RoughBaseCfg.noise):
         add_noise = False
         noise_level = 1.0  # scales other values
+
 
 class Go2RoughCfgEstPPO(Go2RoughBaseCfgPPO):
     seed = 1
@@ -274,6 +276,6 @@ class Go2RoughCfgEstPPO(Go2RoughBaseCfgPPO):
         rms = True
         true_vel_rms = False
         ada_boot = True
-        vae_class_name = 'EstNet'
-        run_name = 'est'
-        experiment_name = 'rough_go2_est'
+        vae_class_name = "EstNet"
+        run_name = "est"
+        experiment_name = "rough_go2_est"

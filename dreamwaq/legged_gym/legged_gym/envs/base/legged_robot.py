@@ -295,7 +295,9 @@ class LeggedRobot(BaseTask):
             self.extras["reward_cv"]["rew_" + key] = cv
             self.episode_sums[key][env_ids] = 0.0
 
-        std_reward = torch.std(torch.sum(self.episodic_reward_each_agent, dim=1), correction=0)
+        std_reward = torch.std(
+            torch.sum(self.episodic_reward_each_agent, dim=1), correction=0
+        )
         mean_reward = torch.mean(torch.sum(self.episodic_reward_each_agent, dim=1))
 
         if self.episodic_reward_each_agent.shape[0] == 1:

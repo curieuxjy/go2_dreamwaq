@@ -35,10 +35,18 @@ ROBOT_POS = gymapi.Vec3(0.0, 0.0, 0.42)
 
 # Default Joint Angles
 DEFAULT_JOINT_ANGLES = {
-    "FL_hip_joint": 0.1, "FL_thigh_joint": 0.8, "FL_calf_joint": -1.5,
-    "FR_hip_joint": -0.1, "FR_thigh_joint": 0.8, "FR_calf_joint": -1.5,
-    "RL_hip_joint": 0.1, "RL_thigh_joint": 1.0, "RL_calf_joint": -1.5,
-    "RR_hip_joint": -0.1, "RR_thigh_joint": 1.0, "RR_calf_joint": -1.5
+    "FL_hip_joint": 0.1,
+    "FL_thigh_joint": 0.8,
+    "FL_calf_joint": -1.5,
+    "FR_hip_joint": -0.1,
+    "FR_thigh_joint": 0.8,
+    "FR_calf_joint": -1.5,
+    "RL_hip_joint": 0.1,
+    "RL_thigh_joint": 1.0,
+    "RL_calf_joint": -1.5,
+    "RR_hip_joint": -0.1,
+    "RR_thigh_joint": 1.0,
+    "RR_calf_joint": -1.5,
 }
 DEFAULTS = list(DEFAULT_JOINT_ANGLES.values())
 
@@ -70,14 +78,15 @@ AXES_GEOM = gymutil.AxesGeometry(0.1)
 # a wireframe sphere
 sphere_rot = gymapi.Quat.from_euler_zyx(0.5 * math.pi, 0, 0)
 sphere_pose = gymapi.Transform(r=sphere_rot)
-SPHERE_GEOM = gymutil.WireframeSphereGeometry(0.02, 12, 12, sphere_pose, color=(1, 1, 0))
-
+SPHERE_GEOM = gymutil.WireframeSphereGeometry(
+    0.02, 12, 12, sphere_pose, color=(1, 1, 0)
+)
 
 
 def create_egocentric_camera(env, actor_handle):
     camera_sensor_pose = gymapi.Vec3(0.0, 0.0, 0.0)
     CAMERA_SENSOR_INDEX = 22
-    poses = gym.get_actor_rigid_body_states(env, actor_handle, gymapi.STATE_POS)['pose']
+    poses = gym.get_actor_rigid_body_states(env, actor_handle, gymapi.STATE_POS)["pose"]
 
     # Get pose for the handles
     d435_handle_pose = gymapi.Transform.from_buffer(poses[CAMERA_SENSOR_INDEX])
@@ -90,8 +99,12 @@ def create_egocentric_camera(env, actor_handle):
     # Create transform from d435 location and d435 rotation
     egocentric_cam_transform = gymapi.Transform(d435_point, d435_handle_pose.r)
 
-    cam_box_handle = gym.get_actor_rigid_body_handle(env, actor_handle, CAMERA_SENSOR_INDEX)
-    cam_box_state = gym.get_actor_rigid_body_states(env, actor_handle, gymapi.STATE_POS)[-1]
+    cam_box_handle = gym.get_actor_rigid_body_handle(
+        env, actor_handle, CAMERA_SENSOR_INDEX
+    )
+    cam_box_state = gym.get_actor_rigid_body_states(
+        env, actor_handle, gymapi.STATE_POS
+    )[-1]
 
     camera_props = gymapi.CameraProperties()
     # camera_props.horizontal_fov = 1.047197551 # 60 degree
@@ -104,8 +117,12 @@ def create_egocentric_camera(env, actor_handle):
     # x = 0.45
     # y = 0
     # z = 0.57
-    camera_offset = gymapi.Vec3(0, 0, 0)  # egocentric_cam_transform.p # gymapi.Vec3(x, y, z)
-    camera_rotation = gymapi.Quat(0, 0, 0.7071068, 0.7071068)  # egocentric_cam_transform.r # [ x: -90, y: 90, z: 0 ] # gymapi.Quat.from_euler_zyx(0, -1.57, 0) # [ x: 0, y: -89.9557653, z: 0 ]
+    camera_offset = gymapi.Vec3(
+        0, 0, 0
+    )  # egocentric_cam_transform.p # gymapi.Vec3(x, y, z)
+    camera_rotation = gymapi.Quat(
+        0, 0, 0.7071068, 0.7071068
+    )  # egocentric_cam_transform.r # [ x: -90, y: 90, z: 0 ] # gymapi.Quat.from_euler_zyx(0, -1.57, 0) # [ x: 0, y: -89.9557653, z: 0 ]
     print(camera_offset, camera_rotation)
     # name = 'd435'
     # Depth Field of View (FOV):
@@ -113,12 +130,15 @@ def create_egocentric_camera(env, actor_handle):
     # Depth output resolution:
     # Up to 1280 × 720
     # domain_randomization.py // graphics.py
-    gym.attach_camera_to_body(egocentric_cam_handle,
-                              env,
-                              cam_box_handle,
-                              gymapi.Transform(camera_offset, camera_rotation),
-                              gymapi.FOLLOW_TRANSFORM)
+    gym.attach_camera_to_body(
+        egocentric_cam_handle,
+        env,
+        cam_box_handle,
+        gymapi.Transform(camera_offset, camera_rotation),
+        gymapi.FOLLOW_TRANSFORM,
+    )
     return egocentric_cam_handle, egocentric_cam_transform
+
 
 def create_ball(sim, env, fixed=False):
     ball_urdf = "ball.urdf"
@@ -137,13 +157,13 @@ def create_ball(sim, env, fixed=False):
 def clamp(x, min_value, max_value):
     return max(min(x, max_value), min_value)
 
+
 def print_asset_info(asset, name):
     print("======== Asset info %s: ========" % (name))
     num_bodies = gym.get_asset_rigid_body_count(asset)
     num_joints = gym.get_asset_joint_count(asset)
     num_dofs = gym.get_asset_dof_count(asset)
-    print("Got %d bodies, %d joints, and %d DOFs" %
-          (num_bodies, num_joints, num_dofs))
+    print("Got %d bodies, %d joints, and %d DOFs" % (num_bodies, num_joints, num_dofs))
 
     # Iterate through bodies
     print("Bodies:")
@@ -154,10 +174,12 @@ def print_asset_info(asset, name):
 
 
 def new_sub_terrain(vertical_scale, horizontal_scale):
-    return SubTerrain(width=TERRAIN_WIDTH,
-                      length=TERRAIN_LENGTH,
-                      vertical_scale=vertical_scale,
-                      horizontal_scale=horizontal_scale)
+    return SubTerrain(
+        width=TERRAIN_WIDTH,
+        length=TERRAIN_LENGTH,
+        vertical_scale=vertical_scale,
+        horizontal_scale=horizontal_scale,
+    )
 
 
 def create_plane(sim):
@@ -169,9 +191,11 @@ def create_plane(sim):
 
 
 def create_stairs(horizontal_scale, vertical_scale, step_width, step_height):
-    stair = stairs_terrain(new_sub_terrain(vertical_scale, horizontal_scale),
-                           step_width=step_width,
-                           step_height=step_height)
+    stair = stairs_terrain(
+        new_sub_terrain(vertical_scale, horizontal_scale),
+        step_width=step_width,
+        step_height=step_height,
+    )
 
     # print(stair.terrain_name)
     # print(stair.vertical_scale)
@@ -182,10 +206,12 @@ def create_stairs(horizontal_scale, vertical_scale, step_width, step_height):
 
     heightfield = stair.height_field_raw
 
-    vertices, triangles = convert_heightfield_to_trimesh(heightfield,
-                                                         horizontal_scale=horizontal_scale,
-                                                         vertical_scale=vertical_scale,
-                                                         slope_threshold=0)
+    vertices, triangles = convert_heightfield_to_trimesh(
+        heightfield,
+        horizontal_scale=horizontal_scale,
+        vertical_scale=vertical_scale,
+        slope_threshold=0,
+    )
     tm_params = gymapi.TriangleMeshParams()
     tm_params.nb_vertices = vertices.shape[0]
     tm_params.nb_triangles = triangles.shape[0]
@@ -198,6 +224,7 @@ def create_stairs(horizontal_scale, vertical_scale, step_width, step_height):
     # hf_params.transform.p.y = 0
     # gym.add_heightfield(sim, heightfield, hf_params)
     return
+
 
 def create_viewer(sim):
     # create viewer
@@ -247,19 +274,19 @@ def create_actor(sim, env, fixed=True, dof_print=False):
     dof_types = [gym.get_asset_dof_type(robot_asset, i) for i in range(num_dofs)]
 
     # get the position slice of the DOF state array
-    dof_positions = dof_states['pos']
+    dof_positions = dof_states["pos"]
 
     # get the limit-related slices of the DOF properties array
-    stiffnesses = dof_props['stiffness']
-    dampings = dof_props['damping']
-    armatures = dof_props['armature']  # 전기자
-    has_limits = dof_props['hasLimits']
-    lower_limits = dof_props['lower']
-    upper_limits = dof_props['upper']
+    stiffnesses = dof_props["stiffness"]
+    dampings = dof_props["damping"]
+    armatures = dof_props["armature"]  # 전기자
+    has_limits = dof_props["hasLimits"]
+    lower_limits = dof_props["lower"]
+    upper_limits = dof_props["upper"]
 
     # initialize default positions, limits, and speeds
     # (make sure they are in reasonable ranges)
-    defaults = DEFAULTS # DEFAULTS
+    defaults = DEFAULTS  # DEFAULTS
     speeds = np.zeros(num_dofs)
 
     for i in range(num_dofs):
@@ -282,7 +309,9 @@ def create_actor(sim, env, fixed=True, dof_print=False):
         # set speed depending on DOF type and range of motion
         if dof_types[i] == gymapi.DOF_ROTATION:
             # speed_scale = 1.0
-            speeds[i] = 1.0 * clamp(2 * (upper_limits[i] - lower_limits[i]), 0.25 * math.pi, 3.0 * math.pi)
+            speeds[i] = 1.0 * clamp(
+                2 * (upper_limits[i] - lower_limits[i]), 0.25 * math.pi, 3.0 * math.pi
+            )
         else:
             speeds[i] = 1.0 * clamp(2 * (upper_limits[i] - lower_limits[i]), 0.1, 7.0)
 
@@ -308,7 +337,7 @@ def create_actor(sim, env, fixed=True, dof_print=False):
     # from_euler_zyx(x-roll, y, z)
     # random_rad = random.uniform(-1.5, 1.5) # 90deg == 1.57rad
     # random_rad = 0.6
-    pose.r = gymapi.Quat.from_euler_zyx(0, 0, 0)# (random_rad, 0, 0)
+    pose.r = gymapi.Quat.from_euler_zyx(0, 0, 0)  # (random_rad, 0, 0)
 
     # pose.r = gymapi.Quat(0, 0, 0, 1) #-0.7071068, 0.7071068)
     # necessary when loading an asset that is defined using z-up convention
@@ -319,7 +348,15 @@ def create_actor(sim, env, fixed=True, dof_print=False):
     # Egocentric camera
     # egocentric_cam_handle, egocentric_cam_transform = create_egocentric_camera(env, robot_actor)
 
-    return robot_asset, robot_actor, dof_props, dof_states, dof_positions, speeds # , egocentric_cam_handle, egocentric_cam_transform
+    return (
+        robot_asset,
+        robot_actor,
+        dof_props,
+        dof_states,
+        dof_positions,
+        speeds,
+    )  # , egocentric_cam_handle, egocentric_cam_transform
+
 
 def print_any_state(sim):
     root_state = gym.acquire_actor_root_state_tensor(sim)
@@ -336,7 +373,9 @@ def print_any_state(sim):
     root_states = gymtorch.wrap_tensor(root_state)
     dof_state = gymtorch.wrap_tensor(dof_state_tensor)
     net_contact_forces = gymtorch.wrap_tensor(net_contact_forces)
-    rigid_body_states = gymtorch.wrap_tensor(rigid_body_states) # shape (num_rigid_bodies, 13)
+    rigid_body_states = gymtorch.wrap_tensor(
+        rigid_body_states
+    )  # shape (num_rigid_bodies, 13)
     # print(rigid_body_states.shape) # torch.Size([25, 13])
 
     dof_pos = dof_state.view(12, 2)[..., 0]
@@ -366,6 +405,7 @@ def print_any_state(sim):
     # print(">>> RB ", net_contact_forces[13])
     # print(">>> RF ", net_contact_forces[18])
 
+
 def create_sim():
     # initialize gym
     gym = gymapi.acquire_gym()
@@ -394,7 +434,9 @@ def create_sim():
     if args.use_gpu_pipeline:
         print("WARNING: Forcing CPU pipeline.")
 
-    sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
+    sim = gym.create_sim(
+        args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params
+    )
     if sim is None:
         print("*** Failed to create sim")
         quit()
@@ -407,11 +449,10 @@ class AssetDesc:
         self.file_name = file_name
         self.flip_visual_attachments = flip_visual_attachments
 
+
 if __name__ == "__main__":
 
-    asset_descriptors = [
-        AssetDesc("robots/go2/urdf/go2.urdf", True)
-    ]
+    asset_descriptors = [AssetDesc("robots/go2/urdf/go2.urdf", True)]
 
     # 1. 시뮬레이션 객체 불러오기
     gym, sim = create_sim()
@@ -436,12 +477,13 @@ if __name__ == "__main__":
 
     # 5. actor 만들기 (asset을 불러오고 난 후 env에 할당)
     ball = create_ball(sim, env)
-    robot_asset, robot_actor, dof_props, dof_states, dof_positions, speeds = create_actor(sim, env, dof_print=False, fixed=True)
-
+    robot_asset, robot_actor, dof_props, dof_states, dof_positions, speeds = (
+        create_actor(sim, env, dof_print=False, fixed=True)
+    )
 
     # 6. 애니메이션을 위한 준비
-    lower_limits = dof_props['lower']
-    upper_limits = dof_props['upper']
+    lower_limits = dof_props["lower"]
+    upper_limits = dof_props["upper"]
     # initialize animation state
     anim_state = ANIM_SEEK_LOWER
     current_dof = 0
@@ -474,11 +516,15 @@ if __name__ == "__main__":
                 anim_state = ANIM_SEEK_DEFAULT
         if anim_state == ANIM_SEEK_DEFAULT:
             dof_positions[current_dof] -= speed * DT
-            if dof_positions[current_dof] <= DEFAULTS[current_dof]:# DEFAULTS[current_dof]:
-                dof_positions[current_dof] = DEFAULTS[current_dof]# DEFAULTS[current_dof]
+            if (
+                dof_positions[current_dof] <= DEFAULTS[current_dof]
+            ):  # DEFAULTS[current_dof]:
+                dof_positions[current_dof] = DEFAULTS[
+                    current_dof
+                ]  # DEFAULTS[current_dof]
                 anim_state = ANIM_FINISHED
         elif anim_state == ANIM_FINISHED:
-            dof_positions[current_dof] = DEFAULTS[current_dof] # DEFAULTS[current_dof]
+            dof_positions[current_dof] = DEFAULTS[current_dof]  # DEFAULTS[current_dof]
             current_dof = (current_dof + 1) % 12  # num_dofs
             anim_state = ANIM_SEEK_LOWER
 

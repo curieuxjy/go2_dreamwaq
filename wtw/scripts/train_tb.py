@@ -1,5 +1,6 @@
 def train_go2(headless=True):
     import isaacgym
+
     assert isaacgym
     import torch
     from torch.utils.tensorboard import SummaryWriter
@@ -205,7 +206,6 @@ def train_go2(headless=True):
     Cfg.commands.pacing_offset = False
     Cfg.commands.binary_phases = True
     Cfg.commands.gaitwise_curricula = True
-
 
     # Configure the environment
     env = VelocityTrackingEasyEnv(sim_device="cuda:0", headless=headless, cfg=Cfg)
