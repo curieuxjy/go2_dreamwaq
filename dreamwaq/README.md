@@ -29,7 +29,7 @@ https://github.com/curieuxjy/dreamwaq/assets/40867411/5dcea5c9-3ff3-469d-baa7-70
 3. `legged-gym/` 위치에서 `pip install -e .`
 4. `ImportError: libpython3.8.so.1.0: cannot open shared object file: No such file or directory`
    - `export LD_LIBRARY_PATH=/home/jungyeon/anaconda3/envs/go2/lib`
-5. `pip install tensorboard wandb`
+5. `pip install tensorboard wandb opencv-python`
 6. `AttributeError: module 'distutils' has no attribute 'version'`
    - `pip install setuptools==59.5.0`
    - (ref) https://github.com/pytorch/pytorch/issues/69894

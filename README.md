@@ -1,5 +1,5 @@
 # go2_walk
-Demonstration Code for Go2 Walking
+Demonstration Code for [Go2](https://www.unitree.com/go2/) Walking
 - PPT : [RO](https://www.canva.com/design/DAGPeSPjAwk/5edJAwXttYySYyRlV8QsNg/edit?utm_content=DAGPeSPjAwk&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
 - Code Structure
 ```
