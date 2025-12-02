@@ -3,14 +3,14 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
-from params_proto import PrefixProto
+# from params_proto import PrefixProto
 
 from go2_gym_learn.ppo_cse import ActorCritic
 from go2_gym_learn.ppo_cse import RolloutStorage
 from go2_gym_learn.ppo_cse import caches
 
 
-class PPO_Args(PrefixProto):
+class PPO_Args:
     # algorithm
     value_loss_coef = 1.0
     use_clipped_value_loss = True

@@ -143,6 +143,7 @@ class Go2RoughCfgPPO(LeggedRobotCfgPPO):
         run_name = "default"
         experiment_name = "rough_go2"
         max_iterations = 5000
+        save_interval = 500
 
 
 class Go2RoughBaseCfg(Go2RoughCfg):

@@ -10,7 +10,7 @@ import torch
 
 from .actor_critic import ActorCritic
 from .rollout_storage import RolloutStorage
-
+from torch.utils.tensorboard import SummaryWriter
 
 def class_to_dict(obj) -> dict:
     if not hasattr(obj, "__dict__"):
@@ -62,7 +62,7 @@ class RunnerArgs:
 
 class Runner:
 
-    def __init__(self, env, device="cpu"):
+    def __init__(self, env, log_dir=None, device="cpu"):
         from .ppo import PPO
 
         self.device = device
@@ -76,28 +76,29 @@ class Runner:
         ).to(self.device)
 
         if RunnerArgs.resume:
+            pass
             # load pretrained weights from resume_path
-            from ml_logger import ML_Logger
+            # from ml_logger import ML_Logger
 
-            loader = ML_Logger(
-                root="http://escher.csail.mit.edu:8080", prefix=RunnerArgs.resume_path
-            )
-            weights = loader.load_torch("checkpoints/ac_weights_last.pt")
-            actor_critic.load_state_dict(state_dict=weights)
-
-            if hasattr(self.env, "curricula") and RunnerArgs.resume_curriculum:
-                # load curriculum state
-                distributions = loader.load_pkl("curriculum/distribution.pkl")
-                distribution_last = distributions[-1]["distribution"]
-                gait_names = [
-                    key[8:] if key.startswith("weights_") else None
-                    for key in distribution_last.keys()
-                ]
-                for gait_id, gait_name in enumerate(self.env.category_names):
-                    self.env.curricula[gait_id].weights = distribution_last[
-                        f"weights_{gait_name}"
-                    ]
-                    print(gait_name)
+            # loader = ML_Logger(
+            #     root="http://escher.csail.mit.edu:8080", prefix=RunnerArgs.resume_path
+            # )
+            # weights = loader.load_torch("checkpoints/ac_weights_last.pt")
+            # actor_critic.load_state_dict(state_dict=weights)
+            #
+            # if hasattr(self.env, "curricula") and RunnerArgs.resume_curriculum:
+            #     # load curriculum state
+            #     distributions = loader.load_pkl("curriculum/distribution.pkl")
+            #     distribution_last = distributions[-1]["distribution"]
+            #     gait_names = [
+            #         key[8:] if key.startswith("weights_") else None
+            #         for key in distribution_last.keys()
+            #     ]
+            #     for gait_id, gait_name in enumerate(self.env.category_names):
+            #         self.env.curricula[gait_id].weights = distribution_last[
+            #             f"weights_{gait_name}"
+            #         ]
+            #         print(gait_name)
 
         self.alg = PPO(actor_critic, device=self.device)
         self.num_steps_per_env = RunnerArgs.num_steps_per_env
@@ -111,6 +112,10 @@ class Runner:
             [self.env.num_obs_history],
             [self.env.num_actions],
         )
+
+        # Log
+        self.log_dir = log_dir
+        self.writer = None
 
         self.tot_timesteps = 0
         self.tot_time = 0
@@ -131,7 +136,9 @@ class Runner:
 
         # initialize writer
         # assert logger.prefix, "you will overwrite the entire instrument server"
-
+        # initialize writer
+        if self.log_dir is not None and self.writer is None:
+            self.writer = SummaryWriter(log_dir=self.log_dir, flush_secs=10)
         # logger.start("start", "epoch", "episode", "run", "step")
 
         if init_at_random_ep_len:
@@ -156,6 +163,9 @@ class Runner:
             obs_history.to(self.device),
         )
         self.alg.actor_critic.train()  # switch to train mode (for dropout for example)
+
+        ep_infos = []
+        rew_infos = []
 
         rewbuffer = deque(maxlen=100)
         lenbuffer = deque(maxlen=100)
@@ -207,45 +217,46 @@ class Runner:
                         rewards[:num_train_envs], dones[:num_train_envs], infos
                     )
 
-                    if "train/episode" in infos:
-                        pass
-                        # with logger.Prefix(metrics="train/episode"):
-                        #     logger.store_metrics(**infos["train/episode"])
+                    if self.log_dir is not None:
+                        if "train/episode" in infos:
+                            ep_infos.append(infos["train/episode"])
+                            # with logger.Prefix(metrics="train/episode"):
+                            #     logger.store_metrics(**infos["train/episode"])
 
-                    if "eval/episode" in infos:
-                        pass
+                        if "eval/episode" in infos:
+                            ep_infos.append(infos["eval/episode"])
                         # with logger.Prefix(metrics="eval/episode"):
                         #     logger.store_metrics(**infos["eval/episode"])
 
-                    if "curriculum" in infos:
+                        if "curriculum" in infos:
 
-                        cur_reward_sum += rewards
-                        cur_episode_length += 1
+                            cur_reward_sum += rewards
+                            cur_episode_length += 1
 
-                        new_ids = (dones > 0).nonzero(as_tuple=False)
+                            new_ids = (dones > 0).nonzero(as_tuple=False)
 
-                        new_ids_train = new_ids[new_ids < num_train_envs]
-                        rewbuffer.extend(
-                            cur_reward_sum[new_ids_train].cpu().numpy().tolist()
-                        )
-                        lenbuffer.extend(
-                            cur_episode_length[new_ids_train].cpu().numpy().tolist()
-                        )
-                        cur_reward_sum[new_ids_train] = 0
-                        cur_episode_length[new_ids_train] = 0
+                            new_ids_train = new_ids[new_ids < num_train_envs]
+                            rewbuffer.extend(
+                                cur_reward_sum[new_ids_train].cpu().numpy().tolist()
+                            )
+                            lenbuffer.extend(
+                                cur_episode_length[new_ids_train].cpu().numpy().tolist()
+                            )
+                            cur_reward_sum[new_ids_train] = 0
+                            cur_episode_length[new_ids_train] = 0
 
-                        new_ids_eval = new_ids[new_ids >= num_train_envs]
-                        rewbuffer_eval.extend(
-                            cur_reward_sum[new_ids_eval].cpu().numpy().tolist()
-                        )
-                        lenbuffer_eval.extend(
-                            cur_episode_length[new_ids_eval].cpu().numpy().tolist()
-                        )
-                        cur_reward_sum[new_ids_eval] = 0
-                        cur_episode_length[new_ids_eval] = 0
+                            new_ids_eval = new_ids[new_ids >= num_train_envs]
+                            rewbuffer_eval.extend(
+                                cur_reward_sum[new_ids_eval].cpu().numpy().tolist()
+                            )
+                            lenbuffer_eval.extend(
+                                cur_episode_length[new_ids_eval].cpu().numpy().tolist()
+                            )
+                            cur_reward_sum[new_ids_eval] = 0
+                            cur_episode_length[new_ids_eval] = 0
 
-                    if "curriculum/distribution" in infos:
-                        distribution = infos["curriculum/distribution"]
+                        if "curriculum/distribution" in infos:
+                            distribution = infos["curriculum/distribution"]
 
                 stop = time.time()
                 collection_time = stop - start
