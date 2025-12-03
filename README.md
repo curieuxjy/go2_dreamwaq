@@ -48,7 +48,11 @@ go2_walk/
 | Related | [Fall Recovery Task](https://arxiv.org/abs/2306.12712) |
 | Training Log | [WandB Dashboard](https://wandb.ai/curieuxjy/dreamwaq) |
 
-> ⚠️ **Unofficial Implementation** - This is an independent reproduction, not affiliated with the original authors.
+I independently implemented the DreamWaQ algorithm based on the paper. The core component, **Context-aided Estimator Network (CENet)**, has been carefully implemented and verified to work as described. Feel free to explore the code and experiment with it!
+
+![](./asset/method.png)
+
+> 📖 For detailed setup instructions including Docker configuration and training commands, please refer to the [dreamwaq/README.md](./dreamwaq/README.md).
 
 ---
 
