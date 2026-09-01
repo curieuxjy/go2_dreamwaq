@@ -1,0 +1,17 @@
+id = "reward-power-distribution"
+level = 2
+stage = "stage2_env"
+source = "dreamwaq_manager/source/dreamwaq_manager/dreamwaq_manager/tasks/locomotion/mdp/rewards.py"
+task = "관절 간 파워 분포의 불균형 페널티를 완성한다: var(토크 x 각속도)^2"
+hints = [
+    "이번에는 절댓값을 쓰지 않는다 — 부호 있는 파워 그대로의 분산이다",
+    "합이 아니라 관절 축(dim=-1)의 분산을 본다: torch.var",
+    "분산을 한 번 더 제곱한다 (논문 Table I: var(tau . theta_dot)^2)",
+    "모든 관절이 같은 파워를 쓰면 분산이 0 이므로 페널티가 0 이 되어야 한다",
+]
+body = """    asset = env.scene[asset_cfg.name]
+    joint_power = (
+        asset.data.applied_torque[:, asset_cfg.joint_ids] * asset.data.joint_vel[:, asset_cfg.joint_ids]
+    )
+    return torch.square(torch.var(joint_power, dim=-1))
+"""

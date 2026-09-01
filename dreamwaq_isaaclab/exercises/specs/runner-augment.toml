@@ -1,0 +1,24 @@
+id = "runner-augment"
+level = 2
+stage = "stage4_cenet"
+source = "dreamwaq_manager/source/dreamwaq_manager/dreamwaq_manager/algorithms/dreamwaq_runner.py"
+task = "actor 관측을 45 → 64 로 증강한다 — 정규화한 base 관측에 추정 속도와 context 를 잇는다"
+hints = [
+    "self._norm_base(base_obs) 가 base 관측(45)을 obs_rms 로 정규화해 준다",
+    "vel_input(3) 과 context_vec(16) 은 정규화하지 않고 그대로 잇는다 — 45 + 3 + 16 = 64",
+    "잇는 순서가 actor 의 입력 레이아웃이다. 학습과 배포가 같은 순서를 써야 한다",
+    "rough 지형은 use_exteroception 이 True 라 height_scan 을 뒤에 덧붙인다 (self._extract_extero(src_obs))",
+    "결과를 actor_obs 에 담는다 — 아래의 NaN 경고와 nan_to_num 이 그 이름을 쓴다 (그 부분은 주어져 있다)",
+]
+
+# 원본에서 그대로 잘라낼 구간. 소스가 바뀌면 생성기가 "찾지 못했다"고 실패하므로
+# 조용히 어긋나는 일은 없다. 그때는 이 body 를 현재 코드로 갱신한다.
+#
+# NaN 경고 + nan_to_num 은 일부러 남겨 둔다. 이 실습이 묻는 것은 '무엇을 어떤 순서로
+# 잇는가' 이고, 경고 블록은 그 답이 아니라 오히려 task04_diagnose 로 이어지는 맥락이다
+# ("씻어내기 전에 한 번 말한다" — 안 그러면 붕괴가 곡선에 안 보인다).
+body = """        parts = [self._norm_base(base_obs), vel_input, context_vec]
+        if self.use_exteroception:
+            parts.append(self._extract_extero(src_obs))
+        actor_obs = torch.cat(parts, dim=-1)
+"""

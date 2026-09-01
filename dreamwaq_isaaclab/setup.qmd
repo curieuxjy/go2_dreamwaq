@@ -1,0 +1,342 @@
+---
+title: "Setup Guide (Isaac Sim 6.0 Binary)"
+---
+
+본 문서는 처음 이 프로젝트를 받는 학생을 대상으로, **Isaac Sim 6.0 바이너리** 기반에서 IsaacLab + DreamWaQ를 설치하고 학습/평가 smoke test까지 검증하는 전 과정을 정리한다.
+
+- **OS**: Ubuntu (kernel 6.17 / GLIBC 2.39)
+- **GPU**: NVIDIA RTX 4080 16GB (CUDA 12.8+ 드라이버)
+- **Python**: 3.12.13 (Isaac Sim 번들 kit python 사용 — 별도 conda/venv 불필요)
+
+::: {.callout-important}
+**현재 환경은 Isaac Sim 6.0 바이너리 + IsaacLab `release/3.0.0-beta2` (번들 Python 3.12.13)** 이다.
+6.0 바이너리 도입의 전체 기록(브랜치 전환 근거, 트러블슈팅 표, 무해한 경고 목록)은 canonical 문서
+[`IsaacSim_Lab_update.md`](https://github.com/curieuxjy/IsaacLab_DreamWaQ/blob/main/IsaacSim_Lab_update.md)
+(upstream repo) 에 정리되어 있다. 본 가이드는 그 핵심 절차를 요약하고
+DreamWaQ 패키지 설치/스모크 테스트까지 잇는다.
+:::
+
+---
+
+## 0. 전체 그림
+
+```
+[1] Isaac Sim 6.0 바이너리   →  ~/isaacsim   (이미 설치 가정; 번들 Python 3.12.13)
+        │
+        ▼
+[2] IsaacLab clone          →  ~/IsaacLab
+        │  git checkout release/3.0.0-beta2     (★ 6.0에 맞는 브랜치)
+        │  symlink _isaac_sim → ~/isaacsim
+        │  UV_HTTP_TIMEOUT=600 ./isaaclab.sh -i
+        ▼
+[3] DreamWaQ 패키지 설치
+        │  pip install -e dreamwaq_manager/source/dreamwaq_manager    (활성 스택)
+        ▼
+[4] Smoke test (train + play)
+```
+
+모든 Python 명령은 **`~/IsaacLab/_isaac_sim/python.sh`** 또는 동일 경로의 `~/IsaacLab/isaaclab.sh -p`로 실행한다(번들 kit python). 별도 conda/venv는 만들지 않는다.
+
+---
+
+## 1. Isaac Sim 6.0 바이너리
+
+본 환경은 Isaac Sim **6.0.0 바이너리**가 `~/isaacsim`에 이미 설치되어 있다고 가정한다(번들 Python 3.12.13). 설치 확인:
+
+```bash
+cat ~/isaacsim/VERSION                                    # 6.0.0-rc...
+~/isaacsim/python.sh -c "import sys; print(sys.version)"   # 3.12.13
+```
+
+> 과거 5.1 소스 빌드(`git clone IsaacSim → ./build.sh`) 절차는 더 이상 쓰지 않는다.
+
+---
+
+## 2. IsaacLab 설치
+
+### 2.1 클론 + 브랜치 전환 + Isaac Sim 연결
+
+```bash
+cd ~
+git clone https://github.com/isaac-sim/IsaacLab.git
+cd ~/IsaacLab
+git fetch --all --tags
+git checkout release/3.0.0-beta2          # ★ 6.0에 맞는 브랜치 (가장 중요)
+ln -s ~/isaacsim _isaac_sim               # 바이너리를 직접 심링크
+```
+
+### 2.2 IsaacLab 패키지 설치
+
+NVIDIA pip 미러가 느려 타임아웃을 늘린다. 시스템 빌드 도구(cmake/gcc)나 git이 없으면 먼저 설치한다.
+
+```bash
+sudo apt-get install -y --no-install-recommends cmake build-essential git   # 최초 1회
+cd ~/IsaacLab
+export UV_HTTP_TIMEOUT=600
+./isaaclab.sh -i
+```
+
+::: {.callout-warning}
+번들 kit python의 pip가 대용량 휠(torch/CUDA) 다운로드 중 **간헐적 segfault**를 낼 수 있다.
+`./isaaclab.sh -i`는 멱등하므로, 실패하면 pip 캐시가 누적되도록 **성공할 때까지 재실행**하면 된다(보통 수 회 내 완료).
+:::
+
+### 2.3 `isaaclab` core 패키지 보완 설치 {.unnumbered}
+
+::: {.callout-warning}
+`./isaaclab.sh --install`이 일부 환경에서 **`source/isaaclab`(core)** 만 누락하고 종료되는 케이스가 확인되었다.
+:::
+
+```bash
+~/IsaacLab/_isaac_sim/python.sh -c "import isaaclab; print(isaaclab.__version__)"
+```
+
+`ModuleNotFoundError` 가 뜨면:
+
+```bash
+~/IsaacLab/_isaac_sim/python.sh -m pip install -e ~/IsaacLab/source/isaaclab
+```
+
+### 2.4 RSL-RL 설치
+
+```bash
+~/IsaacLab/_isaac_sim/python.sh -m pip install rsl-rl-lib
+~/IsaacLab/_isaac_sim/python.sh -c "import rsl_rl; print('rsl_rl OK')"
+```
+
+---
+
+## 3. DreamWaQ 패키지 설치
+
+두 구현 모두 설치하거나 필요한 것만 선택한다.
+
+### 3.1 ManagerBased 버전 (`dreamwaq_manager`)
+
+```bash
+cd ~/Documents/lec_dreamwaq/dreamwaq_manager
+~/IsaacLab/_isaac_sim/python.sh -m pip install -e source/dreamwaq_manager
+```
+
+Task 등록 검증:
+```bash
+~/IsaacLab/_isaac_sim/python.sh -c \
+  "import dreamwaq_manager.tasks; import gymnasium as gym; \
+   print([e for e in gym.registry if 'Manager' in e and 'DreamWaQ' in e])"
+```
+
+기대 출력 (6개):
+```
+['DreamWaQ-Manager-Go2-Base-v0', 'DreamWaQ-Manager-Go2-Base-Play-v0',
+ 'DreamWaQ-Manager-Go2-Oracle-v0', 'DreamWaQ-Manager-Go2-Oracle-Play-v0',
+ 'DreamWaQ-Manager-Go2-Waq-v0', 'DreamWaQ-Manager-Go2-Waq-Play-v0']
+```
+
+### 3.2 Direct 버전 (`dreamwaq_direct`)
+
+::: {.callout-warning}
+`dreamwaq_direct`는 동일 알고리즘의 DirectRLEnv 포팅으로 cross-check 용도다. 종료 조건은 원본
+IsaacGym 과 동일한 **몸통 접촉력 > 1 N** 이며 `dreamwaq_manager`(§3.1) 와 같으므로 두 스택의 수치는
+서로 비교 가능하다 (4096 envs 실측 확인). 생성 지형에서 접촉 센서가 깨지던 원인과 수정 내역은
+`dreamwaq_direct/KNOWN_ISSUES.md` 참조.
+:::
+
+```bash
+cd ~/Documents/lec_dreamwaq/dreamwaq_direct
+~/IsaacLab/_isaac_sim/python.sh -m pip install -e source/dreamwaq_direct
+```
+
+Task 등록 검증:
+```bash
+~/IsaacLab/_isaac_sim/python.sh -c \
+  "import dreamwaq_direct.tasks; import gymnasium as gym; \
+   print([e for e in gym.registry if 'Direct' in e and 'DreamWaQ' in e])"
+```
+
+기대 출력 (6개):
+```
+['DreamWaQ-Direct-Go2-Base-v0', 'DreamWaQ-Direct-Go2-Base-Play-v0',
+ 'DreamWaQ-Direct-Go2-Oracle-v0', 'DreamWaQ-Direct-Go2-Oracle-Play-v0',
+ 'DreamWaQ-Direct-Go2-Waq-v0', 'DreamWaQ-Direct-Go2-Waq-Play-v0']
+```
+
+---
+
+## 4. 실행 alias 설정 (편의)
+
+`train.py`/`play.py`가 쓰는 `cli_args.py`는 이제 각 패키지의 **`scripts/rsl_rl/`에 동봉**되어 있어, 예전처럼 `PYTHONPATH`에 IsaacLab 스크립트 경로를 추가할 필요가 **없다**.
+
+편의를 위해 Isaac Sim 번들 Python alias만 등록한다:
+```bash
+echo 'alias isaacpy="$HOME/IsaacLab/_isaac_sim/python.sh"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+이후 가이드는 `isaacpy` 가 등록되었다고 가정한다.
+
+---
+
+## 5. Smoke test
+
+### 5.1 ManagerBased 버전
+
+```bash
+cd ~/Documents/lec_dreamwaq/dreamwaq_manager/scripts
+
+# Base
+isaacpy rsl_rl/train.py --task=DreamWaQ-Manager-Go2-Base-v0 \
+  --headless --num_envs=64 --max_iterations=3
+
+# Oracle
+isaacpy rsl_rl/train.py --task=DreamWaQ-Manager-Go2-Oracle-v0 \
+  --headless --num_envs=64 --max_iterations=3
+
+# Waq
+isaacpy rsl_rl/train.py --task=DreamWaQ-Manager-Go2-Waq-v0 \
+  --headless --num_envs=64 --max_iterations=3
+```
+
+또는 한 번에:
+```bash
+./quick_test.sh
+```
+
+### 5.2 Direct 버전
+
+```bash
+cd ~/Documents/lec_dreamwaq/dreamwaq_direct/scripts
+
+# Base
+isaacpy rsl_rl/train.py --task=DreamWaQ-Direct-Go2-Base-v0 \
+  --headless --num_envs=64 --max_iterations=3
+
+# Oracle
+isaacpy rsl_rl/train.py --task=DreamWaQ-Direct-Go2-Oracle-v0 \
+  --headless --num_envs=64 --max_iterations=3
+
+# Waq
+isaacpy rsl_rl/train.py --task=DreamWaQ-Direct-Go2-Waq-v0 \
+  --headless --num_envs=64 --max_iterations=3
+```
+
+또는 한 번에:
+```bash
+./quick_test.sh
+```
+
+각각 로그에 `Training time: X.XX seconds` 가 출력되면 성공.
+
+### 5.3 Inference (play.py)
+
+```bash
+# ManagerBased 버전
+cd ~/Documents/lec_dreamwaq/dreamwaq_manager/scripts
+isaacpy rsl_rl/play.py --task=DreamWaQ-Manager-Go2-Base-Play-v0 \
+  --headless --num_envs=4 \
+  --load_run=<FOLDER> --checkpoint=model_2.pt
+
+# Direct 버전
+cd ~/Documents/lec_dreamwaq/dreamwaq_direct/scripts
+isaacpy rsl_rl/play.py --task=DreamWaQ-Direct-Go2-Base-Play-v0 \
+  --headless --num_envs=4 \
+  --load_run=<FOLDER> --checkpoint=model_2.pt
+```
+
+::: {.callout-note}
+`play.py`는 무한 루프이다. Ctrl+C로 종료한다.
+:::
+
+---
+
+## 6. 로컬 에셋 설정 (필수 — 학습 안정성)
+
+Isaac Sim은 기본적으로 로봇 USD 에셋을 **NVIDIA S3 클라우드**에서 매번 다운로드한다. 네트워크 상태에 따라 학습이 hang되므로, **로컬에 미리 다운로드**해야 한다.
+
+### 6.1 에셋 다운로드
+
+```bash
+# Go2 로봇 에셋
+mkdir -p ~/IsaacLab/data/Assets/Isaac/6.0/Isaac/IsaacLab/Robots/Unitree/Go2/Props
+
+curl -L -o ~/IsaacLab/data/Assets/Isaac/6.0/Isaac/IsaacLab/Robots/Unitree/Go2/go2.usd \
+  "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/IsaacLab/Robots/Unitree/Go2/go2.usd"
+
+curl -L -o ~/IsaacLab/data/Assets/Isaac/6.0/Isaac/IsaacLab/Robots/Unitree/Go2/Props/instanceable_meshes.usd \
+  "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/IsaacLab/Robots/Unitree/Go2/Props/instanceable_meshes.usd"
+
+# UI 마커 에셋 (debug_vis=True 시 필요 — play 모드에서 사용)
+mkdir -p ~/IsaacLab/data/Assets/Isaac/6.0/Isaac/Props/UIElements
+
+curl -L -o ~/IsaacLab/data/Assets/Isaac/6.0/Isaac/Props/UIElements/arrow_x.usd \
+  "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Props/UIElements/arrow_x.usd"
+
+curl -L -o ~/IsaacLab/data/Assets/Isaac/6.0/Isaac/Props/UIElements/frame_prim.usd \
+  "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Props/UIElements/frame_prim.usd"
+```
+
+### 6.2 Isaac Sim config 수정
+
+Isaac Sim 6.0 바이너리의 경우 `~/isaacsim/kit/data/Kit/IsaacLab/3.0/user.config.json` 파일을 열고(소스 빌드/5.1은 `~/.cache/packman/.../Isaac-Sim/5.1/user.config.json`), `asset_root` 섹션의 URL을 로컬 경로로 변경:
+
+```json
+"isaac": {
+    "asset_root": {
+        "default": "/home/<username>/IsaacLab/data/Assets/Isaac/6.0",
+        "cloud": "/home/<username>/IsaacLab/data/Assets/Isaac/6.0",
+        "nvidia": "/home/<username>/IsaacLab/data/Assets/Isaac/6.0",
+        "timeout": 5.0
+    }
+}
+```
+
+::: {.callout-warning}
+Isaac Sim 재설치 또는 kit-kernel 캐시 갱신 시 이 설정을 다시 적용해야 한다.
+:::
+
+### 6.3 시스템 성능 설정
+
+대규모 환경 (4096+ envs) 학습 시:
+
+```bash
+# CPU governor를 performance로 설정
+echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+
+# GPU Persistence Mode 활성화
+sudo nvidia-smi -pm 1
+
+# Swap 확보 (8GB 이상 권장)
+sudo fallocate -l 8G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+```
+
+RTX 4080 (16GB VRAM, 32GB RAM) 기준 **최대 안정 num_envs = 4096**.
+
+### 6.4 debug_vis 설정
+
+학습 시 (`--headless`) velocity command의 `debug_vis`는 **False** (두 구현 모두 동일).
+Play 시 (`Play-v0` 태스크)에서만 `debug_vis=True`로 전환.
+
+---
+
+## 7. 트러블슈팅
+
+| 증상 | 해결 |
+|---|---|
+| `ModuleNotFoundError: No module named 'isaaclab'` | §2.3 — `pip install -e ~/IsaacLab/source/isaaclab` |
+| `ModuleNotFoundError: No module named 'cli_args'` | §4 — `cli_args`는 각 패키지 `scripts/rsl_rl/`에 동봉됨. 프로젝트 루트(예: `dreamwaq_manager/`)에서 실행 |
+| `./isaaclab.sh -i` 중 pip `Segmentation fault` | §2.2 — 멱등하므로 성공할 때까지 재실행(캐시 누적) |
+| `nvidia-cudnn-cu12` 다운로드 timeout | `export UV_HTTP_TIMEOUT=600` 후 재시도 |
+| `ImportError: __nvJitLinkCreate_12_8` | `~/.bashrc`에서 시스템 CUDA `LD_LIBRARY_PATH` 제거 |
+| `play.py`가 끝나지 않음 | 정상 동작. Ctrl+C로 종료 |
+| 첫 실행이 수 분 멈춤 | 정상 — shader/extension 캐싱 |
+| 학습이 scene 생성 중 hang | §6 로컬 에셋 설정 확인 |
+| Bus Error at 8192 envs | swap 부족. §6.3 참고 |
+
+---
+
+## 8. 다음 단계
+
+- **본격 학습**: `--num_envs=4096 --max_iterations=1500` 으로 풀 학습 ([`dreamwaq_manager/README.md`](dreamwaq_manager/README.md))
+- **WandB 로깅**: `--logger=wandb` (사전에 `wandb login` 필요)
+- **평가 영상 녹화**: `--video --enable_cameras --video_length=400`
+- **구현 비교**: `comparison.qmd` — 두 구현의 정렬 현황 및 차이 분석 ([upstream repo](https://github.com/curieuxjy/IsaacLab_DreamWaQ))
+- **Sim-to-Sim 배포**: upstream repo 의 `deploy_sim2sim/` (ROS 2 Jazzy + Gazebo Harmonic) 참고

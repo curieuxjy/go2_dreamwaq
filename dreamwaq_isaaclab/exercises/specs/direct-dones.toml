@@ -1,0 +1,34 @@
+id = "direct-dones"
+level = 2
+stage = "stage2_env"
+source = "dreamwaq_direct/source/dreamwaq_direct/dreamwaq_direct/tasks/locomotion/dreamwaq_env.py"
+task = "종료 조건 두 가지를 만든다 — 시간 초과와 몸통 접촉"
+hints = [
+    "time_out 은 episode_length_buf 가 max_episode_length - 1 이상인 env 다 (스텝 인덱스는 0부터 센다)",
+    "net_forces_w_history 는 (envs, history=3, bodies, 3) 이다. .torch 로 텐서를 얻는다",
+    "self._termination_contact_ids 로 몸통(base) 바디만 골라낸다",
+    "축을 순서대로 줄인다: 힘 벡터 norm(dim=-1) → history 최대값 max(dim=1)[0] → 임계값 비교 → 바디 any(dim=1)",
+    "history 는 평균이 아니라 최대를 쓴다. 3 프레임 중 한 번이라도 부딪혔으면 넘어진 것이다",
+    "임계값은 self.cfg.termination_contact_force (1.0 N) 다 — 원본 legged_gym 과 같다",
+]
+
+# 원본에서 그대로 잘라낼 구간. 소스가 바뀌면 생성기가 "찾지 못했다"고 실패하므로
+# 조용히 어긋나는 일은 없다. 그때는 이 body 를 현재 코드로 갱신한다.
+body = """        time_out = self.episode_length_buf >= self.max_episode_length - 1
+
+        # Failure termination: trunk touches the terrain.
+        #
+        # Identical to the original IsaacGym DreamWaQ (`legged_robot.py:check_termination`):
+        #   reset_buf = any(norm(contact_forces[:, termination_contact_indices, :]) > 1.0)
+        # with `terminate_after_contacts_on = ["base"]` (go2_config.py). The manager stack uses
+        # `mdp.illegal_contact` with the same body/threshold, so both stacks match the original
+        # and each other. Both contact sensors use history_length=3, hence the max over history.
+        net_contact_forces = self._contact_sensor.data.net_forces_w_history.torch
+        base_contact = torch.any(
+            torch.max(
+                torch.linalg.norm(net_contact_forces[:, :, self._termination_contact_ids], dim=-1), dim=1
+            )[0]
+            > self.cfg.termination_contact_force,
+            dim=1,
+        )
+"""

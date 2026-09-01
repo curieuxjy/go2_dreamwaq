@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Training artifacts
+logs/
+wandb/
+outputs/
+*.mp4
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# pipeline run artifacts
+pipeline_logs/
+pipeline_logs_console*.log
+
+# generated analysis output (regenerate with scripts/compare_runs.py)
+figures/

@@ -1,0 +1,303 @@
+id = "cenet-loss"
+level = 2
+stage = "stage4_cenet"
+source = "dreamwaq_manager/source/dreamwaq_manager/dreamwaq_manager/algorithms/cenet.py"
+task = "CENet 의 세 손실 항(vel / recon / KL)과 총합을 완성한다"
+hints = [
+    "vel_loss 는 est_vel 과 true_vel 의 MSE, recon_loss 는 est_onext 와 true_onext 의 MSE 다",
+    "q(z|x)=N(mu, exp(logvar)) 와 p(z)=N(0, I) 사이의 KL 은 닫힌 형태다. std 가 아니라 logvar 를 받는다",
+    # 이 힌트는 일부러 축을 지정하지 않는다. 이 실습이 가르치려는 유일한 개념적 결정이
+    # "KL 을 어느 축으로 줄이느냐" 인데, 답을 여기 적으면 L2 가 아니라 받아쓰기가 된다.
+    # 교과서대로 sum 을 써 보고 검사기의 `kl_loss=8.0000 (기대 0.5)` 를 맞은 뒤 README 의
+    # '리덕션 축' 절을 읽는 것이 의도한 경로다 (learner 검증, 2026-08-30).
+    "nn.MSELoss() 는 차원 평균이다. KL 도 같은 축으로 축약해야 한다. 그리고 total_loss.backward() 는 스칼라를 요구한다",
+    "beta 가 곱해지는 것은 KL 항 뿐이다 (beta-VAE)",
+]
+
+# 원본에서 그대로 잘라낼 구간. 소스가 바뀌면 생성기가 "찾지 못했다"고 실패하므로
+# 조용히 어긋나는 일은 없다. 그때는 이 body 를 현재 코드로 갱신한다.
+body = """            mse_loss = nn.MSELoss()
+            vel_loss = mse_loss(est_vel_batch, true_vel_batch)
+            recon_loss = mse_loss(est_onext_batch, true_onext_batch)
+
+            # KL is averaged over the 16 latent dims, not summed, so that all three terms use
+            # the SAME reduction axis: "mean per dimension" (vel over 3, recon over 45, KL
+            # over 16). Mixing them is what killed the latent: nn.MSELoss() averages the recon
+            # over 45 dims while a summed KL does not, which is the textbook sum/sum beta-VAE
+            # rescaled by 1/45 -- i.e. effective beta = 45*beta (180 at the old beta_limit=4)
+            # -> posterior collapse. ("Effective beta" is OUR term, not the paper's: the
+            # coefficient that would sit on KL_sum if recon were rescaled to a 45-dim sum.)
+            # Aligning the other way instead -- recon as a 45-dim SUM with vel left as a 3-dim
+            # mean -- would blow the vel:recon ratio from 1:1 to 1:45 (1:15 = 3:45 would need
+            # vel summed as well), so the mean is the choice that keeps both ratios intact.
+            # Effective beta vs. textbook sum/sum: (45/16)*beta ~= 2.81*beta.
+            klds = -0.5 * (1 + logvar_batch - mu_batch.pow(2) - logvar_batch.exp())
+            kl_loss = klds.mean(1).mean(0, True) * self.beta
+
+            total_loss = vel_loss + recon_loss + kl_loss
+"""
+
+# --- 실험용 게이트를 실습 본문에서 가린다 ---------------------------------------------
+# 프로덕션 cenet.py 에는 DWQ_CENET_* 환경변수 게이트가 있다 (커밋 c46b64f). 전부 기본 off 이고,
+# 붕괴 원인을 한 변수씩 떼어 보려고 만든 실험용 스위치다. 실습에서 가리는 이유는 둘이다.
+#   (1) DWQ_CENET_KL_REDUCTION=sum 이 이 실습 README 의 "KL 도 차원당 평균이어야 한다" 와
+#       정면으로 부딪친다. 설명 없이 보이면 학습자는 무엇이 옳은지 알 수 없다.
+#   (2) _kl_per_dim() / _kl_term_gated() 가 지금 채워야 할 KL 식을 그대로 담고 있다 —
+#       starter 에 두면 답안지를 함께 배포하는 셈이다 (self._kl_term_gated(mu, logvar) 한 줄로
+#       검사기를 통과할 수 있다).
+# 프로덕션 소스는 건드리지 않고 생성 시점에만 가린다. 왜 실제 소스와 다른지는 이 실습의
+# README.md '실제 소스에는 스위치가 더 있다' 절에 적어 두었다.
+
+[[also_mask]]
+find = """        # --- experiment gates (env vars) ----------------------------------------------------
+        # ALL OFF BY DEFAULT: with none of them set, every number produced by this class is
+        # bit-for-bit what it was before the gates existed. They exist so the rough-Waq
+        # posterior collapse (|mu| 2.9e-2 -> 6.3e-4, KL 3.7e-1 -> 5.4e-6 between two runs of the
+        # SAME config) can be attacked one variable at a time on the GPU.
+        #
+        # DWQ_CENET_REFERENCE=1 — "IsaacGym-original alignment" preset. Restored on user
+        #   instruction ("the IsaacGym implementation got the CENet right, follow it"); it
+        #   re-enables things the §8-1 commit removed. Which side is right is to be decided by
+        #   experiment, not by this comment. (That file, dreamwaq/rsl_rl/rsl_rl/vae/cenet.py, is
+        #   THIS project's IsaacGym ancestor — not code released by the paper's authors. The
+        #   paper fixes neither the KL reduction nor beta, so none of (a)-(e) is a paper
+        #   requirement; the argument for them is that they are what actually walked on
+        #   IsaacGym.) It flips FIVE training rules to match that file (and the Go2 cfg it ran
+        #   with):
+        #     (a) KL reduction  klds.sum(1)  instead of our klds.mean(1)   (16x)
+        #     (b) beta annealing  beta = min(beta*1.01, beta_limit=4.0)  per update
+        #         (constant beta=1.0 here). Reaches the 4.0 cap after ~139 updates.
+        #     (c) min_lr = learning_rate  -> ReduceLROnPlateau becomes a no-op
+        #     (d) NO gradient clipping (our clip_grad_norm_(1.0) is an addition)
+        #     (e) 1 epoch x 1 minibatch per update (our cfg does 5 x 4 = 20 grad steps)
+        #   CAVEAT on (c): min_lr == learning_rate is true of the IsaacGym CENet *class
+        #   defaults* (1e-3 / 1e-3). Its Go2 config, the one actually trained, uses
+        #   learning_rate=0.01, min_lr=0.0015 — a scheduler that CAN decay 6.7x. Those two
+        #   readings disagree; this preset takes the class-default one and leaves
+        #   DWQ_CENET_LR / DWQ_CENET_MIN_LR to reach the other.
+        #
+        # Individual gates (each overrides the preset when set explicitly):
+        #   DWQ_CENET_BETA=<x>              KL weight. The paper (eq.7) never fixes a numeric
+        #                                   beta, so LOWERING it is the only collapse lever that
+        #                                   stays inside the paper. Our mean(1) reduction makes
+        #                                   beta=1.0 equivalent to a textbook sum/sum beta of
+        #                                   45/16 = 2.81, so beta=0.35 ~ textbook beta=1.
+        #                                   Candidates: 0.35, 0.1.
+        #   DWQ_CENET_FREE_BITS=<nats>      per-dim KL floor (free bits). The collapse mechanism
+        #                                   is that the decoder stops needing z at all (decoder
+        #                                   |W_z| = 0.011 at it500, never recovering), so a floor
+        #                                   that stops pushing an unused dim to the prior is the
+        #                                   standard fix. 0.0 = off. Candidates: 0.02 .. 0.05.
+        #                                   NOTE: an ADDITION not present in the paper — record
+        #                                   it in PAPER.md if a reported run uses it.
+        #   DWQ_CENET_KL_REDUCTION=mean|sum reduction over latent dims after free bits.
+        #   DWQ_CENET_BETA_ANNEAL=0|1       beta *= 1.01 per update, capped at beta_limit.
+        #   DWQ_CENET_BETA_LIMIT=<x>        the cap (default 4.0, the IsaacGym value).
+        #   DWQ_CENET_GRAD_CLIP=<norm>      0 disables clipping (IsaacGym has none).
+        #   DWQ_CENET_LR=<lr>               initial Adam lr.
+        #   DWQ_CENET_MIN_LR=<lr>           ReduceLROnPlateau floor (ours 1e-4 vs initial 1e-3).
+        #                                   LOW PRIORITY: the "collapse was locked in by a
+        #                                   decayed lr" hypothesis is already falsified — the
+        #                                   measured lr trajectories of the collapsed and the
+        #                                   healthy run are the same. Kept for completeness.
+        #   DWQ_CENET_EPOCHS / DWQ_CENET_MINI_BATCHES   update count per rollout.
+        #   DWQ_CENET_DEC_VEL=zero|detach   structural, see _DecoderVelGate. EXPERIMENTAL ONLY:
+        #                                   it leaves the paper (Fig. 2 decodes from [v_hat, z]).
+        self.reference_mode = os.environ.get("DWQ_CENET_REFERENCE") == "1"
+        _ref = self.reference_mode
+
+        self.free_bits = float(os.environ.get("DWQ_CENET_FREE_BITS", "0.0"))
+        self.kl_reduction = os.environ.get("DWQ_CENET_KL_REDUCTION", "sum" if _ref else "mean").lower()
+        if self.kl_reduction not in ("mean", "sum"):
+            raise ValueError(f"DWQ_CENET_KL_REDUCTION must be 'mean' or 'sum', got {self.kl_reduction!r}")
+
+        _beta_env = os.environ.get("DWQ_CENET_BETA")
+        if _beta_env is not None:
+            beta = float(_beta_env)
+        self.beta_anneal = os.environ.get("DWQ_CENET_BETA_ANNEAL", "1" if _ref else "0") == "1"
+        self.beta_anneal_rate = 1.01  # hard-coded in the IsaacGym original too
+        self.beta_limit = float(os.environ.get("DWQ_CENET_BETA_LIMIT", beta_limit))
+
+        _clip = float(os.environ.get("DWQ_CENET_GRAD_CLIP", "0.0" if _ref else "1.0"))
+        # PPO clips at max_grad_norm=1.0; the IsaacGym CENet had no clip at all and its
+        # first-layer weight norm ran away (7.6 -> 62.6 over a run). Same budget here.
+        self.grad_clip = _clip if _clip > 0.0 else None
+
+        _lr_env = os.environ.get("DWQ_CENET_LR")
+        if _lr_env is not None:
+            learning_rate = float(_lr_env)
+        _min_lr_env = os.environ.get("DWQ_CENET_MIN_LR")
+        if _min_lr_env is not None:
+            min_lr = float(_min_lr_env)
+        elif _ref:
+            min_lr = learning_rate
+
+        num_learning_epochs = int(os.environ.get("DWQ_CENET_EPOCHS", 1 if _ref else num_learning_epochs))
+        num_mini_batches = int(os.environ.get("DWQ_CENET_MINI_BATCHES", 1 if _ref else num_mini_batches))
+
+        self.decoder_vel_mode = os.environ.get("DWQ_CENET_DEC_VEL", "keep").lower()
+        if self.decoder_vel_mode not in ("keep", "zero", "detach"):
+            raise ValueError(f"DWQ_CENET_DEC_VEL must be keep|zero|detach, got {self.decoder_vel_mode!r}")
+        # A latent dim counts as "alive" above this per-dim KL (nats). Only a diagnostic.
+        self.kl_active_eps = 0.01"""
+replace = """        # 실험용 환경변수 게이트(DWQ_CENET_*)는 이 실습을 만들 때 걷어냈다 — 전부 기본 off 라
+        # 학습이 쓰는 수식은 달라지지 않는다. 게이트가 읽던 값들(free_bits / kl_reduction /
+        # beta_anneal / beta_limit)도 같이 지웠다: 남겨 두면 아래 TODO 에서 KL 을 어느 축으로
+        # 줄일지 정할 때 `kl_reduction == "sum"` 분기를 써야 하나 하고 헤매게 된다.
+        # 왜 그런 스위치가 프로덕션 소스에 있는지는 이 실습 폴더의 README.md 를 본다.
+        self.grad_clip = 1.0  # 이 파일에서 실제로 읽히는 유일한 설정값 — PPO 의 max_grad_norm 과 같은 예산
+        # 진단 주석이 가리키는 문턱값(차원당 KL 이 이 위면 '살아 있는' 잠재 차원).
+        # 진단 계산 자체를 아래에서 걷어냈으므로 이 실습에서는 읽는 곳이 없다.
+        self.kl_active_eps = 0.01"""
+
+[[also_mask]]
+find = """        _non_default = (
+            self.reference_mode or self.free_bits > 0.0 or self.kl_reduction != "mean"
+            or self.beta_anneal or self.grad_clip != 1.0 or self.decoder_vel_mode != "keep"
+            or _lr_env is not None or _min_lr_env is not None or _beta_env is not None
+        )
+        if _non_default:
+            print(
+                f"[DIAG] CENet gates: reference={self.reference_mode} free_bits={self.free_bits} "
+                f"kl_reduction={self.kl_reduction} beta={beta} beta_anneal={self.beta_anneal} "
+                f"beta_limit={self.beta_limit} grad_clip={self.grad_clip} lr={learning_rate} "
+                f"min_lr={min_lr} epochs={num_learning_epochs}x{num_mini_batches} "
+                f"dec_vel={self.decoder_vel_mode}"
+            )"""
+replace = """        # (게이트 설정 진단 출력은 이 실습에서 걷어냈다.)"""
+
+[[also_mask]]
+find = """        if self.decoder_vel_mode != "keep":
+            # num_vel=3 matches forward()'s `h.split([3, ...])`.
+            decoder_layers.insert(0, _DecoderVelGate(self.decoder_vel_mode, num_vel=3))"""
+replace = """        # (실험용 디코더 게이트 삽입 지점 — 이 실습에서는 걷어냈다.)"""
+
+[[also_mask]]
+find = """class _DecoderVelGate(nn.Module):
+    \"\"\"Structural ablation on the decoder's velocity input. **Default: not inserted.**
+
+    Only built when ``DWQ_CENET_DEC_VEL`` is ``zero`` or ``detach``. It sits in front of the
+    decoder MLP and modifies the first ``num_vel`` entries of the latent:
+
+    * ``zero``   — the decoder cannot see ``est_vel`` at all (removes the recon-target
+      competition between the supervised velocity head and z).
+    * ``detach`` — the decoder still sees ``est_vel``, but the recon loss no longer shapes the
+      encoder's velocity head through it (only ``vel_loss`` does).
+
+    Both are a DIVERGENCE FROM THE PAPER (Fig. 2 feeds ``[v_hat, z]`` into the decoder, with
+    full gradient flow; the IsaacGym original does the same), so they are EXPERIMENTAL ONLY and
+    stay off by default. Confirmed by the paper audit: do not turn these on for a reported run.
+
+    Caveat: inserting this module shifts the ``decoder.<i>`` state_dict indices by one, so a
+    checkpoint trained with the gate on will not load into a default CENet (and weight probes
+    that read ``decoder.0.weight`` will find this module instead).
+    \"\"\"
+
+    def __init__(self, mode: str, num_vel: int = 3):
+        super().__init__()
+        self.mode = mode
+        self.num_vel = num_vel
+
+    def forward(self, latent: torch.Tensor) -> torch.Tensor:
+        vel, ctx = latent.split([self.num_vel, latent.size(-1) - self.num_vel], dim=-1)
+        if self.mode == "zero":
+            vel = torch.zeros_like(vel)
+        else:  # "detach"
+            vel = vel.detach()
+        return torch.cat([vel, ctx], dim=-1)
+
+
+class CenetRolloutStorage:"""
+# 클래스를 통째로 지운다 — 삽입 지점(decoder_layers.insert)도 위에서 가려서, 남겨 두면
+# 아무 데서도 인스턴스화되지 않는 빈 껍데기가 된다.
+replace = """class CenetRolloutStorage:"""
+
+[[also_mask]]
+find = """        # Paper eq.7 puts a weight `beta` on the KL term but gives NEITHER a numeric value NOR a
+        # schedule for it. "beta is constant" is OUR READING of that silence, not a sentence from
+        # the paper (it never says "constant"), so the constant default here is a choice -- and
+        # lowering it with DWQ_CENET_BETA stays inside what the paper actually states. The
+        # IsaacGym original reads the same silence the other way and DOES anneal (`beta *= 1.01`
+        # capped at `beta_limit`); that path is restorable via DWQ_CENET_BETA_ANNEAL /
+        # DWQ_CENET_REFERENCE and is to be settled by experiment."""
+replace = """        # Paper eq.7 puts a weight `beta` on the KL term but gives NEITHER a numeric value NOR
+        # a schedule for it. "beta is constant" is OUR READING of that silence, not a sentence
+        # from the paper. The cfg's `vae` block supplies the number."""
+
+[[also_mask]]
+find = """    @staticmethod
+    def _kl_per_dim(mu, logvar):
+        \"\"\"KL(q(z|x) || N(0, I)) per latent dim, averaged over the minibatch -> shape [latent].
+
+        Written with ``torch.distributions`` on purpose: the closed form lives in ``update()``
+        and must appear exactly ONCE in this file, because that occurrence is the body carved
+        out for the ``cenet-loss`` exercise (a second copy would be a printed answer key).
+        Numerically the same quantity.
+        \"\"\"
+        q = torch.distributions.Normal(mu, torch.exp(0.5 * logvar))
+        p = torch.distributions.Normal(torch.zeros_like(mu), torch.ones_like(mu))
+        return torch.distributions.kl_divergence(q, p).mean(0)
+
+    def _kl_term_gated(self, mu, logvar):
+        \"\"\"KL term used ONLY when a probe gate is on (free bits and/or sum reduction).
+
+        Free bits (Kingma et al. 2016, "Improved Variational Inference with Inverse
+        Autoregressive Flow", §free-bits): clamp the *minibatch-mean* KL of each latent
+        dimension at ``self.free_bits`` nats BEFORE reducing over dims. Under the floor the
+        gradient w.r.t. that dim's mu/logvar is exactly zero, so a dim the decoder is not
+        using yet stops being pushed toward the prior and can be picked up again later. This
+        targets the observed failure (decoder |W_z| = 0.011 at it500 and never recovering),
+        which is a *dead-latent* spiral rather than an excess-KL-pressure problem.
+
+        ``kl_reduction='sum'`` restores the IsaacGym original's reduction (16x stronger than
+        our per-dim mean); the paper fixes no reduction, so it is an alignment knob with that
+        implementation, not a collapse fix.
+        \"\"\"
+        kl_per_dim = torch.clamp(self._kl_per_dim(mu, logvar), min=self.free_bits)
+        kl = kl_per_dim.sum() if self.kl_reduction == "sum" else kl_per_dim.mean()
+        return kl.reshape(1) * self.beta"""
+replace = """    # (잠재 차원별 KL 진단 도우미와 게이트용 KL 항은 이 실습에서 걷어냈다 —
+    #  둘 다 지금 채워야 할 KL 식을 그대로 담고 있어서 답안지가 된다.)"""
+
+[[also_mask]]
+find = """            # Probe gates (OFF by default -> this block never runs and the numbers above are
+            # exactly what they always were). Deliberately an override AFTER the default term
+            # instead of a branch inside it: those lines are the verbatim body of the
+            # `cenet-loss` exercise, and editing them would push the gate into the starter.
+            if self.free_bits > 0.0 or self.kl_reduction != "mean":
+                kl_loss = self._kl_term_gated(mu_batch, logvar_batch)
+                total_loss = vel_loss + recon_loss + kl_loss"""
+replace = """            # (실험용 게이트 오버라이드는 이 실습에서 걷어냈다.)"""
+
+[[also_mask]]
+find = """            # Default 1.0 (same budget PPO uses); None only via DWQ_CENET_GRAD_CLIP=0 or the
+            # DWQ_CENET_REFERENCE preset, where there is no clipping at all."""
+replace = """            # PPO 와 같은 예산(1.0)으로 CENet gradient 도 자른다."""
+
+[[also_mask]]
+find = """            with torch.no_grad():
+                kl_per_dim = self._kl_per_dim(mu_batch, logvar_batch)
+                mean_mu_abs += mu_batch.abs().mean().item()
+                mean_sigma += (0.5 * logvar_batch).exp().mean().item()
+                mean_kl_active += float((kl_per_dim > self.kl_active_eps).sum().item())
+                mean_kl_nats += float(kl_per_dim.sum().item())"""
+replace = """            with torch.no_grad():
+                mean_mu_abs += mu_batch.abs().mean().item()
+                mean_sigma += (0.5 * logvar_batch).exp().mean().item()
+                # 잠재 차원별 KL 진단(kl_active_dims / kl_nats)은 이 실습에서 걷어냈다 —
+                # 그 계산이 곧 위에서 채워야 할 KL 식이기 때문이다. 프로덕션 소스에는 있다."""
+
+[[also_mask]]
+find = """        # beta annealing (IsaacGym-original behaviour, off by default): applied AFTER the losses of this
+        # update, exactly where the IsaacGym original puts it, so `beta` reaches beta_limit=4.0 after
+        # ~139 updates. The runner checkpoints `cenet_beta`, so a resumed run keeps its place.
+        if self.beta_anneal:
+            self.beta = min(self.beta * self.beta_anneal_rate, self.beta_limit)"""
+replace = """        # (β annealing 은 실험용 게이트라 이 실습에서 걷어냈다. 논문 eq.7 은 β 에 스케줄을
+        #  주지 않는데, "그러니 상수" 는 논문 문장이 아니라 우리 독법이다 — README 를 본다.)"""
+
+[[also_mask]]
+find = """import os
+
+import torch"""
+replace = """import torch"""

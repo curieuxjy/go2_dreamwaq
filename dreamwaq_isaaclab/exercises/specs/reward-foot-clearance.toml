@@ -1,0 +1,38 @@
+id = "reward-foot-clearance"
+level = 2
+stage = "stage2_env"
+source = "dreamwaq_manager/source/dreamwaq_manager/dreamwaq_manager/tasks/locomotion/mdp/rewards.py"
+task = "발 높이를 '지형 위 높이'로 바꾸고, 목표 클리어런스와의 차이를 측면 속도로 가중해 합한다"
+hints = [
+    "feet_pos_w[:, :, 2] 는 월드 z 다. 지형이 울퉁불퉁하면 그대로 쓸 수 없다",
+    "height_sensor 의 ray_hits_w[..., 2] 평균을 지형 높이로 근사한다 (task05 의 height scan 과 같은 발상)",
+    "ray hit 에는 NaN/inf 가 섞일 수 있다. torch.nan_to_num 으로 0 으로 만든다",
+    "height_sensor_cfg 가 None 이면 지형 보정 없이 월드 z 를 그대로 쓴다 (평지 전용 폴백)",
+    "측면 속도 = sqrt(vx^2 + vy^2). z 속도는 넣지 않는다",
+    "왜 속도로 가중하는가: 발을 들어 '옮기는 중'일 때만 클리어런스를 요구하고, 딛고 서 있는 발은 벌하지 않기 위해서다",
+    "발 4개에 대해 dim=1 로 합해 env 당 스칼라를 만든다",
+]
+
+body = """    asset = env.scene[asset_cfg.name]
+    feet_pos_w = asset.data.body_pos_w[:, asset_cfg.body_ids, :]
+    feet_vel_w = asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :]
+
+    # Foot height ABOVE TERRAIN (not world Z). On uneven ground the terrain under
+    # the feet differs from world Z, so we subtract the mean of the base-mounted
+    # height scanner's ray hits as a flat-terrain approximation.
+    if height_sensor_cfg is not None:
+        height_sensor: RayCaster = env.scene.sensors[height_sensor_cfg.name]
+        ray_hits_z = torch.nan_to_num(
+            height_sensor.data.ray_hits_w[..., 2], nan=0.0, posinf=0.0, neginf=0.0
+        )
+        mean_terrain_z = torch.mean(ray_hits_z, dim=1)
+        feet_z_above_terrain = feet_pos_w[:, :, 2] - mean_terrain_z[:, None]
+    else:
+        feet_z_above_terrain = feet_pos_w[:, :, 2]
+
+    feet_lateral_speed = torch.sqrt(feet_vel_w[:, :, 0] ** 2 + feet_vel_w[:, :, 1] ** 2)
+    return torch.sum(
+        (feet_z_above_terrain - desired_height) ** 2 * feet_lateral_speed,
+        dim=1,
+    )
+"""

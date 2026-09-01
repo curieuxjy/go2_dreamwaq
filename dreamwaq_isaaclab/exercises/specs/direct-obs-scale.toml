@@ -1,0 +1,16 @@
+id = "direct-obs-scale"
+level = 1
+stage = "stage2_env"
+source = "dreamwaq_direct/source/dreamwaq_direct/dreamwaq_direct/tasks/locomotion/dreamwaq_env.py"
+task = "관측을 스케일링한다 — 각 그룹을 O(1) 로 맞춘다"
+hints = [
+    "cfg 에 obs_scale_lin_vel / obs_scale_ang_vel / obs_scale_dof_pos / obs_scale_dof_vel 이 있다",
+    "네 줄이면 된다. 각 변수에 해당 스케일을 곱한다",
+    "gravity 와 actions 는 이미 O(1) 이라 스케일하지 않는다 (원본도 1.0)",
+    "왜 필요한가: raw joint_vel 은 ±20 rad/s 인데 명령은 ±1 이다. 스케일하지 않으면 관절 속도가 관측을 지배해 정책이 명령을 무시한다",
+]
+body = """        lin_vel_b = lin_vel_b * self.cfg.obs_scale_lin_vel
+        ang_vel_b = ang_vel_b * self.cfg.obs_scale_ang_vel
+        joint_pos_rel = joint_pos_rel * self.cfg.obs_scale_dof_pos
+        joint_vel = joint_vel * self.cfg.obs_scale_dof_vel
+"""

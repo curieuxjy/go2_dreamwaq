@@ -1,0 +1,20 @@
+id = "reward-smoothness"
+level = 2
+stage = "stage2_env"
+source = "dreamwaq_manager/source/dreamwaq_manager/dreamwaq_manager/tasks/locomotion/mdp/rewards.py"
+task = "액션의 저크(2차 차분)를 계산하고 t-2 버퍼를 갱신한다"
+hints = [
+    "저크 = a_t - 2*a_{t-1} + a_{t-2} 다. 2차 유한차분이다",
+    "IsaacLab 의 action_manager 는 t 와 t-1 만 준다. t-2 는 self.prev_prev_action 으로 직접 들고 있어야 한다",
+    "이번 호출의 prev_action 이 다음 호출의 t-2 가 된다. 반환 전에 갱신한다",
+    "그냥 대입하면 같은 텐서를 참조하게 된다. .clone() 이 필요한 이유를 생각해 본다",
+    "보상은 env 마다 스칼라 하나여야 한다 — 12개 관절의 저크를 제곱해 dim=1 로 합한다",
+]
+
+body = """        action = env.action_manager.action
+        prev_action = env.action_manager.prev_action
+        jerk = action - 2.0 * prev_action + self.prev_prev_action
+        # cache prev_action as the t-2 for the next call
+        self.prev_prev_action = prev_action.clone()
+        return torch.sum(torch.square(jerk), dim=1)
+"""

@@ -1,0 +1,25 @@
+[package]
+
+# Semantic Versioning is used: https://semver.org/
+version = "0.1.0"
+
+# Description
+category = "isaaclab"
+readme = "README.md"
+
+title = "DreamWaQ Manager"
+author = "DreamWaQ Developers"
+maintainer = "DreamWaQ Developers"
+description = "DreamWaQ locomotion environments for Isaac Lab (ManagerBasedRLEnv)"
+repository = ""
+keywords = ["extension", "isaaclab", "dreamwaq", "locomotion", "manager-based"]
+
+[dependencies]
+"isaaclab" = {}
+"isaaclab_assets" = {}
+"isaaclab_tasks" = {}
+"isaaclab_rl" = {}
+"isaaclab_physx" = {}
+
+[[python.module]]
+name = "dreamwaq_manager"
