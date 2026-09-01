@@ -6,9 +6,6 @@ The implementation targets the **Unitree Go2** quadruped and focuses on **CENet 
 
 > **Scope:** This repository contains only the Isaac Sim / Isaac Lab reinforcement learning implementation needed for the lecture. Legacy IsaacGym code, ROS 2 sim2sim deployment, and the Quarto documentation site are kept in the upstream repository.
 
-**Upstream repository:**
-https://github.com/curieuxjy/IsaacLab_DreamWaQ
-
 ---
 
 ## Overview
@@ -560,83 +557,3 @@ The exercises use a fill-in-the-blank format so that students can focus on the k
 Starter code is generated automatically.
 
 See [`exercises/README.md`](exercises/README.md) for details.
-
----
-
-# What Is Not Included?
-
-To keep the lecture focused, several components from the original repository have been intentionally excluded.
-
-### Algorithms other than PPO
-
-The following were removed:
-
-* SAC stack
-* DreamWaQ++ / CENetPlus
-
-They are available in the git history or the upstream repository if needed.
-
-Relevant commit:
-
-```text
-a2d2774
-```
-
-The 6 official-environment comparison variants were temporarily removed during cleanup but were later restored because they represent the actual experimental axis.
-
-Relevant commit:
-
-```text
-c8df7b4
-```
-
-### Training artifacts
-
-Training logs and checkpoints are not included:
-
-```text
-logs/
-```
-
-They are gitignored and must be generated locally.
-
-### Legacy components
-
-The following remain in the upstream repository:
-
-```text
-dreamwaq/              # Original IsaacGym implementation
-deploy_sim2sim/        # ROS 2 sim2sim deployment
-index.qmd
-comparison.qmd
-plan.qmd
-report.qmd              # Quarto documentation site
-```
-
----
-
-# Hardware
-
-The reference configuration is:
-
-| GPU           | Environments | Status     |
-| ------------- | -----------: | ---------- |
-| RTX 4080 16GB |         4096 | **Stable** |
-| RTX 4080 16GB |         8192 | **OOM**    |
-
-The experiments are therefore configured to use:
-
-```text
-4096 parallel environments
-```
-
-as the default training configuration.
-
----
-
-# References
-
-* **DreamWaQ:** [arXiv:2301.10602](https://arxiv.org/abs/2301.10602)
-* **Upstream implementation:** https://github.com/curieuxjy/IsaacLab_DreamWaQ
-
-For implementation details and a direct comparison with the paper, see [`PAPER.md`](PAPER.md).
