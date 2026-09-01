@@ -1,157 +1,642 @@
-# lec_dreamwaq
+# dreamwaq_isaaclab
 
-강의용으로 분리한 **DreamWaQ** ([arXiv:2301.10602](https://arxiv.org/abs/2301.10602)) 의 Isaac Sim / Isaac Lab 구현.
-사족보행 로봇 **Unitree Go2** 를 대상으로 하며, 핵심은 지형 추정을 담당하는 **CENet**(Context-aided Estimator Network) 이다.
+An **Isaac Sim / Isaac Lab implementation of DreamWaQ** ([arXiv:2301.10602](https://arxiv.org/abs/2301.10602)), extracted and simplified for lecture and educational use.
 
-원본 통합 repo(IsaacGym 레거시 · ROS 2 sim2sim 배포 · Quarto 문서 사이트 포함)는
-[curieuxjy/IsaacLab_DreamWaQ](https://github.com/curieuxjy/IsaacLab_DreamWaQ) 에 있다.
-이 repo 는 그중 **Isaac Sim 기반 RL 소스만** 추출한 것이다.
+The implementation targets the **Unitree Go2** quadruped and focuses on **CENet (Context-aided Estimator Network)**, the terrain-aware state estimation module at the core of DreamWaQ.
 
-## 패키지
+> **Scope:** This repository contains only the Isaac Sim / Isaac Lab reinforcement learning implementation needed for the lecture. Legacy IsaacGym code, ROS 2 sim2sim deployment, and the Quarto documentation site are kept in the upstream repository.
 
-| 디렉토리 | API | 상태 |
-|---|---|---|
-| [`dreamwaq_manager/`](dreamwaq_manager/) | `ManagerBasedRLEnv` | **주 스택**. 논문의 몸통 접촉 종료를 그대로 사용 |
-| [`dreamwaq_direct/`](dreamwaq_direct/)   | `DirectRLEnv`       | 동일 알고리즘의 Direct API 포팅 (cross-check용). 종료 조건·보상·관측 모두 Manager 와 동일 ([KNOWN_ISSUES.md](dreamwaq_direct/KNOWN_ISSUES.md)) |
+**Upstream repository:**
+https://github.com/curieuxjy/IsaacLab_DreamWaQ
 
-**두 패키지는 코드를 공유하지 않는다.** 각자 `algorithms/{cenet,estnet,dreamwaq_runner}.py` 사본을
-따로 갖고 있고, 다른 것은 **Isaac Lab 작성 방식뿐** 알고리즘은 같아야 한다. 그래서 알고리즘을
-고칠 때는 **양쪽에 다 반영**해야 한다 (한 번 어긋난 적이 있어 나중에 back-port 했다).
-동작이 같으므로 체크포인트는 양쪽 모두 upstream `deploy_sim2sim` 스택과 호환된다.
+---
 
-학습과 결과 표는 전부 `dreamwaq_manager` 로 만든다 — `run_full_pipeline.sh` 가 Manager 전용이라
-`dreamwaq_direct/` 에는 학습 산출물이 없다.
+## Overview
 
-## 파일 구조
+The lecture focuses on a simple experimental question:
 
-```
+> **How much does CENet-based state estimation improve locomotion compared with proprioception alone, and how close can it get to an oracle policy with access to privileged information?**
+
+To answer this, we train PPO policies with three different actor observation designs:
+
+| Variant    | Actor Observation | Description                                            |
+| ---------- | ----------------: | ------------------------------------------------------ |
+| **Base**   |                45 | Proprioception only                                    |
+| **Oracle** |                48 | Base observations + ground-truth base linear velocity  |
+| **Waq**    |                64 | Base observations + CENet-estimated velocity + context |
+
+All three policies use the **same environment, reward function, and PPO algorithm**. The primary difference is the information available to the actor.
+
+This makes the comparison useful for understanding the role of **privileged information and learned state estimation** in DreamWaQ.
+
+---
+
+## Repository Structure
+
+```text
 lec_dreamwaq/
-├── run_full_pipeline.sh          6개 task × (학습 → 영상), Manager 전용
-├── dreamwaq_manager/             주 스택 (모든 결과의 출처)
+├── run_full_pipeline.sh          # Train all 6 experimental variants + generate videos
+│
+├── dreamwaq_manager/             # Main implementation and source of all results
 │   ├── scripts/
-│   │   ├── rsl_rl/{train,play,watch,collect_velocity}.py
-│   │   ├── compare_runs.py       tfevents → figures/ 그림 + summary.csv
-│   │   ├── eval_checkpoints.py   체크포인트 전수 평가 → best policy
-│   │   └── quick_test.sh         64 envs / 30 iters 스모크
+│   │   ├── rsl_rl/
+│   │   │   ├── train.py
+│   │   │   ├── play.py
+│   │   │   ├── watch.py
+│   │   │   └── collect_velocity.py
+│   │   ├── compare_runs.py       # Generate comparison plots + summary.csv
+│   │   ├── eval_checkpoints.py   # Evaluate all checkpoints and select best policy
+│   │   └── quick_test.sh         # Smoke test: 64 envs / 30 iterations
+│   │
 │   ├── source/dreamwaq_manager/dreamwaq_manager/
-│   │   ├── algorithms/           cenet.py · estnet.py · dreamwaq_runner.py
+│   │   ├── algorithms/
+│   │   │   ├── cenet.py
+│   │   │   ├── estnet.py
+│   │   │   └── dreamwaq_runner.py
 │   │   └── tasks/locomotion/
-│   │       ├── velocity_env_cfg.py    DreamWaQ 원본 레시피 env
-│   │       ├── terrains.py            지형 비율 헬퍼 (6종 균등)
-│   │       ├── mdp/rewards.py         커스텀 보상 항
-│   │       └── config/go2/            env cfg + PPO cfg + gym 등록
-│   └── logs/                     gitignore — 체크포인트·tfevents·영상·wandb
-├── dreamwaq_direct/              cross-check 스택 (같은 구조, algorithms 사본 별도)
-├── exercises/                    Stage 1~5 강의 실습
-└── figures/                      compare_runs.py 산출물
+│   │       ├── velocity_env_cfg.py
+│   │       ├── terrains.py
+│   │       ├── mdp/rewards.py
+│   │       └── config/go2/
+│   │
+│   └── logs/                     # gitignored: checkpoints, TensorBoard logs,
+│                                 # videos, wandb data
+│
+├── dreamwaq_direct/              # DirectRLEnv implementation for cross-checking
+│
+├── exercises/                    # Stage 1–5 lecture exercises
+│
+└── figures/                      # Outputs generated by compare_runs.py
 ```
 
-## 실행 흐름
+---
 
+## Two Isaac Lab Implementations
+
+This repository contains two implementations of the same algorithm:
+
+| Package             | Isaac Lab API       | Purpose                                                            |
+| ------------------- | ------------------- | ------------------------------------------------------------------ |
+| `dreamwaq_manager/` | `ManagerBasedRLEnv` | **Main implementation** used for training and all reported results |
+| `dreamwaq_direct/`  | `DirectRLEnv`       | Independent port used for cross-checking                           |
+
+The two implementations **do not share algorithm code**.
+
+Each package contains its own copy of:
+
+```text
+algorithms/
+├── cenet.py
+├── estnet.py
+└── dreamwaq_runner.py
 ```
+
+The intended difference is only the Isaac Lab environment implementation style. The underlying DreamWaQ algorithm should remain identical.
+
+### Why duplicate the algorithm code?
+
+This provides an independent implementation for cross-checking the Manager-based version.
+
+Because the implementations are intentionally independent:
+
+> **Any algorithmic change must be applied to both packages.**
+
+They diverged once during development and the changes had to be back-ported, so this is an important maintenance rule.
+
+Both implementations produce checkpoints compatible with the upstream `deploy_sim2sim` stack.
+
+### Which implementation should I use?
+
+For the lecture and experiments, use:
+
+```text
+dreamwaq_manager/
+```
+
+All training runs, evaluation results, and comparison figures are generated from this implementation.
+
+`dreamwaq_direct/` exists primarily as a verification/reference implementation and does not contain training artifacts.
+
+---
+
+# Execution Pipeline
+
+The full pipeline is:
+
+```text
 run_full_pipeline.sh
-  └─ 6개 task 각각:
-       ├─ train.py  (4096 envs)
-       │    └─ Base/Oracle → OnPolicyRunner,  Waq → OnPolicyRunnerWaq (CENet 결합)
-       │         └─ logs/rsl_rl/<experiment_name>/<timestamp>/
-       │              model_*.pt · events.out.tfevents.* · params/*.yaml
-       └─ play.py --video   →  videos/play/rl-video-step-0.mp4
-
-학습이 끝난 뒤:
-  compare_runs.py       tfevents → 곡선·막대 그림 + summary.csv (Waq−Base, Oracle−Waq)
-  eval_checkpoints.py   체크포인트를 전부 굴려 best policy 선정
-  collect_velocity.py   CENet 추정 속도 vs 실제 속도 궤적 (.npz)
+│
+├── Task 1
+│   ├── train.py
+│   │   └── 4096 parallel environments
+│   │       ├── Base / Oracle → OnPolicyRunner
+│   │       └── Waq          → OnPolicyRunnerWaq + CENet
+│   │
+│   └── play.py --video
+│       └── videos/play/rl-video-step-0.mp4
+│
+├── Task 2
+│   └── ...
+│
+└── Task 6
+    └── ...
 ```
 
-Waq 만 rollout 안쪽이 다르다 — 관측 이력을 CENet 에 넣어 `est_vel(3)` 과 `context(16)` 을 얻고,
-정규화한 base 관측 45 에 이어 붙여 actor 입력 64 를 만든다. 자세한 순서는 `CLAUDE.md` 참조.
+Each training run produces:
 
-## 설치
+```text
+logs/rsl_rl/<experiment_name>/<timestamp>/
+├── model_*.pt
+├── events.out.tfevents.*
+└── params/
+    └── *.yaml
+```
 
-Isaac Sim 6.0 바이너리 + IsaacLab `release/3.0.0-beta2` (번들 Python 3.12.13) 가 전제다.
-전체 절차는 [`setup.qmd`](setup.qmd) 참조.
+After training:
+
+```text
+compare_runs.py
+    └── TensorBoard tfevents
+        ├── learning curves
+        ├── bar plots
+        └── summary.csv
+
+eval_checkpoints.py
+    └── Evaluate every checkpoint
+        └── Select best policy
+
+collect_velocity.py
+    └── CENet-estimated velocity
+        vs.
+        ground-truth velocity
+        └── .npz
+```
+
+---
+
+# What Makes Waq Different?
+
+The internal rollout pipeline differs only for the Waq policy.
+
+The Base observation contains 45 normalized proprioceptive features:
+
+```text
+Base observation
+      │
+      ▼
+   45 dims
+      │
+      ▼
+     Actor
+```
+
+For Waq, a history of observations is passed through CENet:
+
+```text
+Observation History
+        │
+        ▼
+      CENet
+        │
+        ├───────────────┐
+        ▼               ▼
+  est_vel (3)      context (16)
+        │               │
+        └───────┬───────┘
+                ▼
+      concatenate with
+      base observation (45)
+                │
+                ▼
+          Actor input (64)
+```
+
+Therefore:
+
+```text
+45 + 3 + 16 = 64
+```
+
+CENet effectively allows the policy to recover information that would otherwise be unavailable to the actor.
+
+For the detailed rollout sequence, see `CLAUDE.md`.
+
+---
+
+# Installation
+
+## Requirements
+
+The following environment is assumed:
+
+* **Isaac Sim 6.0**
+* **Isaac Lab `release/3.0.0-beta2`**
+* Bundled **Python 3.12.13**
+* NVIDIA GPU with sufficient VRAM
+
+See [`setup.qmd`](setup.qmd) for the complete setup procedure.
+
+## Install the package
 
 ```bash
 cd ~/Documents/lec_dreamwaq/dreamwaq_manager
-~/IsaacLab/_isaac_sim/python.sh -m pip install -e source/dreamwaq_manager
+
+~/IsaacLab/_isaac_sim/python.sh \
+    -m pip install -e source/dreamwaq_manager
 ```
 
-> 이 repo 를 새 위치로 옮겼거나 원본 repo 에서 이미 `-e` 설치를 해 두었다면,
-> editable 설치가 **이전 경로를 가리키므로** 위 명령으로 다시 설치해야 한다.
+### Important: Editable installation
 
-## 실행
+If you move this repository to another location, or previously installed the package in editable mode from the original repository, the installation may still point to the **old path**.
+
+In that case, reinstall it using the command above.
+
+---
+
+# Quick Start
+
+Move into the main package:
+
+```bash
+cd dreamwaq_manager
+```
+
+## 1. Run the smoke test
+
+Before starting a full training run:
+
+```bash
+./scripts/quick_test.sh
+```
+
+The smoke test uses:
+
+* 64 environments
+* 30 iterations
+
+This is intended to catch configuration or installation problems quickly.
+
+## 2. Train a policy
+
+For example:
+
+```bash
+python scripts/rsl_rl/train.py \
+    --task=DreamWaQ-Manager-Go2-Base-v0 \
+    --headless
+```
+
+## 3. Evaluate a checkpoint
+
+```bash
+python scripts/rsl_rl/play.py \
+    --task=DreamWaQ-Manager-Go2-Base-Play-v0 \
+    --load_run=FOLDER \
+    --checkpoint=N
+```
+
+---
+
+# Experimental Setup
+
+The lecture uses a single RL algorithm:
+
+> **PPO**
+
+and compares three actor observation designs:
+
+```text
+                    PPO
+                     │
+        ┌────────────┼────────────┐
+        ▼            ▼            ▼
+      Base         Oracle         Waq
+       │             │             │
+      45            48            64
+      dims          dims          dims
+```
+
+## Observation Designs
+
+| Variant    | Actor Input | Information                                         |
+| ---------- | ----------: | --------------------------------------------------- |
+| **Base**   |          45 | Proprioception only                                 |
+| **Oracle** |          48 | Proprioception + ground-truth base linear velocity  |
+| **Waq**    |          64 | Proprioception + CENet-estimated velocity + context |
+
+### Base
+
+The Base policy receives only proprioceptive observations.
+
+It has no direct information about:
+
+* terrain state
+* base linear velocity
+
+This serves as the **lower-bound baseline**.
+
+### Oracle
+
+The Oracle policy receives the same observations as Base, plus the actual base linear velocity.
+
+```text
+45 + 3 = 48
+```
+
+Because the velocity is directly available, Oracle represents an **upper-bound reference** for what can be achieved when this privileged information is provided to the actor.
+
+### Waq
+
+The Waq policy receives:
+
+```text
+45 proprioceptive features
++ 3 CENet-estimated velocity features
++ 16 context features
+= 64 features
+```
+
+Instead of giving the actor privileged velocity directly, CENet learns to estimate the relevant information from observation history.
+
+This is the key idea behind the DreamWaQ comparison.
+
+---
+
+# Six Experimental Variants
+
+The actual experiment consists of **6 variants**:
+
+```text
+3 observation designs × 2 terrain conditions
+```
+
+```text
+DreamWaQ-{BaseDwq,OracleDwq,Waq-Official}-{Flat,Rough}-PPO-v0
+```
+
+Each also has a corresponding `-Play-v0` evaluation environment.
+
+The important property is that all three observation designs use the same environment recipe within each terrain condition.
+
+Therefore, the main comparison is:
+
+```text
+Base → Waq → Oracle
+```
+
+which isolates the effect of learned state estimation.
+
+---
+
+# Original vs. Official Environment Recipe
+
+Two sets of environments are registered in the repository.
+
+### Original DreamWaQ recipe
+
+```text
+DreamWaQ-Manager-Go2-{Base,Oracle,Waq}-v0
+```
+
+These environments reproduce the original DreamWaQ recipe more closely.
+
+However, they were **discarded for the main experiments because the robot failed to walk reliably**.
+
+The body-contact termination rate reached approximately **78%**.
+
+Supporting logs are available in:
+
+```text
+pipeline_logs_dreamwaq_env_failed/
+```
+
+### Official environment recipe
+
+The actual experiments use:
+
+```text
+DreamWaQ-{BaseDwq,OracleDwq,Waq-Official}-{Flat,Rough}-PPO-v0
+```
+
+This recipe was adopted because it provides stable locomotion while preserving the intended observation-design comparison.
+
+The Direct implementation contains only the three original recipe variants because it is intended for cross-checking rather than the main experiment.
+
+---
+
+# Training All Experiments
+
+To train all six variants and generate videos:
+
+```bash
+./run_full_pipeline.sh
+```
+
+Default configuration:
+
+```text
+6 variants
+4096 environments
+3000 iterations
+wandb online
+```
+
+After training, generate the comparison results:
 
 ```bash
 cd dreamwaq_manager
 
-# smoke test (64 envs / 30 iters) — 풀 학습 전에 먼저 실행
-./scripts/quick_test.sh
-
-# 학습
-python scripts/rsl_rl/train.py --task=DreamWaQ-Manager-Go2-Base-v0 --headless
-
-# 평가
-python scripts/rsl_rl/play.py --task=DreamWaQ-Manager-Go2-Base-Play-v0 \
-    --load_run=FOLDER --checkpoint=N
+~/IsaacLab/_isaac_sim/python.sh \
+    scripts/compare_runs.py
 ```
 
-## Task (알고리즘은 PPO 하나, 관측 설계 3종)
+This generates:
 
-강의 범위는 **PPO × {Base, Oracle, Waq}** 3가지 비교뿐이다. 각 task 에 `-Play-v0` 평가 변형이 있다.
-
-| 변형 | actor 관측 | 의미 |
-|---|---|---|
-| **Base** | 45 (proprioception only) | 하한 — 지형·속도 정보 없음 |
-| **Oracle** | 48 (+ 실제 base linear velocity) | 상한 — 특권 정보를 직접 받음 |
-| **Waq** | 64 (45 + CENet 추정 속도 3 + context 16) | DreamWaQ — CENet 이 특권 정보를 추정 |
-
-**실제 실험축은 공식 env 레시피 위의 6변형**(3종 × flat/rough)이다. 셋이 같은 env 를 쓰고
-actor 관측만 다르므로, 성능 차이가 곧 관측 설계의 효과가 된다.
-
-```
-DreamWaQ-{BaseDwq,OracleDwq,Waq-Official}-{Flat,Rough}-PPO-v0   (+ -Play-v0)   <- 실험 대상
+```text
+figures/
+summary.csv
 ```
 
-원본 DreamWaQ 레시피(`DreamWaQ-Manager-Go2-{Base,Oracle,Waq}-v0`)도 등록되어 있지만
-**보행에 실패해 폐기**했다 (몸통 접촉 종료 78%). 근거 로그는 `pipeline_logs_dreamwaq_env_failed/` 에 있다.
-Direct 스택(`DreamWaQ-Direct-Go2-*`)은 cross-check 용이라 원본 레시피 3종만 제공한다.
+---
 
-전체 목록은 `python scripts/list_envs.py`, 자세한 구조 설명은
-[`dreamwaq_manager/README.md`](dreamwaq_manager/README.md) 참조.
+# Interpreting the Results
 
-## 학습과 결과 비교
+The comparison uses two important quantities:
 
-```bash
-./run_full_pipeline.sh      # 6종 학습 + 각 run 영상 (기본 3000 iters / 4096 envs / wandb online)
-
-cd dreamwaq_manager && ~/IsaacLab/_isaac_sim/python.sh scripts/compare_runs.py
-                            # tfevents → figures/ 비교 그림 + summary.csv
+```text
+Waq − Base
+Oracle − Waq
 ```
 
-`summary.csv` 의 `Waq-Base` 가 **CENet 의 순수 기여**, `Oracle-Waq` 가 **남은 격차**다.
+### `Waq − Base`
 
-## 논문 대조
+This measures the improvement obtained by adding CENet.
 
-원문(arXiv:2301.10602)의 네트워크 구조·보상 가중치·PPO 하이퍼파라미터·CENet 손실·
-도메인 랜덤화를 **코드 값과 나란히** 정리한 표가 [`PAPER.md`](PAPER.md) 에 있다.
+Therefore:
 
-알아둘 것 — **지금 학습에 쓰는 공식 env 레시피는 논문 보상 12항 중 5항이 빠져 있고
-2항은 가중치가 1.5배다.** 원본 DreamWaQ 레시피가 걷지 못해 공식 레시피를 채택한 결과다.
-코드의 β annealing 과 AdaBoot 램프도 논문에 없는 것이다. 자세한 것은 `PAPER.md` §2, §4, §5.
+> **Waq − Base ≈ contribution of CENet-based state estimation**
 
-## 강의 실습
+### `Oracle − Waq`
 
-단계별 빈칸 채우기 실습이 [`exercises/`](exercises/) 에 있다 (Stage 1~5, 강도 L0~L3).
-프로덕션 소스는 건드리지 않고 생성기가 starter 를 만든다 —
-[`exercises/README.md`](exercises/README.md) 참조.
+This measures the remaining gap between the learned estimator and direct access to the privileged information.
 
-## 포함되지 않은 것
+Therefore:
 
-- **PPO 외 알고리즘 / 확장** — SAC 스택과 DreamWaQ++(CENetPlus)는 강의 혼동을 막기 위해 제거했다.
-  필요하면 git 히스토리(`a2d2774`) 또는 upstream repo 에서 볼 수 있다.
-  (official-env 비교 6변형은 한때 함께 제거했다가 `c8df7b4` 에서 **되살렸다** — 실제 실험축이다.)
-- **학습 로그 / 체크포인트** (`logs/`) — gitignore 대상이며 이 repo 에 없다.
-- **IsaacGym 원본** (`dreamwaq/`), **ROS 2 sim2sim 배포** (`deploy_sim2sim/`), **Quarto 문서 사이트**
-  (`index.qmd`, `comparison.qmd`, `plan.qmd`, `report.qmd`) — upstream repo 에 있다.
+> **Oracle − Waq ≈ remaining performance gap to the oracle**
 
-하드웨어 기준: RTX 4080 16GB 에서 4096 envs 안정 (8192 는 OOM).
+This makes the three-way comparison particularly useful:
+
+```text
+Base
+ │
+ │  CENet contribution
+ ▼
+Waq
+ │
+ │  Remaining estimation gap
+ ▼
+Oracle
+```
+
+---
+
+# Comparison with the Original Paper
+
+[`PAPER.md`](PAPER.md) provides a side-by-side comparison between the implementation and the original DreamWaQ paper ([arXiv:2301.10602](https://arxiv.org/abs/2301.10602)).
+
+The comparison covers:
+
+* Network architecture
+* Reward terms and weights
+* PPO hyperparameters
+* CENet loss
+* Domain randomization
+
+## Important Implementation Differences
+
+The current training environment is **not an exact reproduction of every detail in the paper**.
+
+The official environment recipe used for training:
+
+* omits **5 of the 12 reward terms** described in the paper
+* uses **1.5× the paper weight for 2 reward terms**
+* includes **β annealing**
+* includes an **AdaBoot ramp**
+
+The β annealing and AdaBoot ramp are not described in the original paper.
+
+The main reason for these differences is practical: the original DreamWaQ environment recipe failed to produce reliable walking in this implementation, so the official environment recipe was adopted for the experiments.
+
+See `PAPER.md` §2, §4, and §5 for the detailed comparison.
+
+---
+
+# Lecture Exercises
+
+The repository includes step-by-step coding exercises under:
+
+```text
+exercises/
+```
+
+The exercises are organized into:
+
+```text
+Stage 1
+Stage 2
+Stage 3
+Stage 4
+Stage 5
+```
+
+with difficulty levels:
+
+```text
+L0 → L3
+```
+
+The exercises use a fill-in-the-blank format so that students can focus on the key components of DreamWaQ without modifying the production implementation.
+
+Starter code is generated automatically.
+
+See [`exercises/README.md`](exercises/README.md) for details.
+
+---
+
+# What Is Not Included?
+
+To keep the lecture focused, several components from the original repository have been intentionally excluded.
+
+### Algorithms other than PPO
+
+The following were removed:
+
+* SAC stack
+* DreamWaQ++ / CENetPlus
+
+They are available in the git history or the upstream repository if needed.
+
+Relevant commit:
+
+```text
+a2d2774
+```
+
+The 6 official-environment comparison variants were temporarily removed during cleanup but were later restored because they represent the actual experimental axis.
+
+Relevant commit:
+
+```text
+c8df7b4
+```
+
+### Training artifacts
+
+Training logs and checkpoints are not included:
+
+```text
+logs/
+```
+
+They are gitignored and must be generated locally.
+
+### Legacy components
+
+The following remain in the upstream repository:
+
+```text
+dreamwaq/              # Original IsaacGym implementation
+deploy_sim2sim/        # ROS 2 sim2sim deployment
+index.qmd
+comparison.qmd
+plan.qmd
+report.qmd              # Quarto documentation site
+```
+
+---
+
+# Hardware
+
+The reference configuration is:
+
+| GPU           | Environments | Status     |
+| ------------- | -----------: | ---------- |
+| RTX 4080 16GB |         4096 | **Stable** |
+| RTX 4080 16GB |         8192 | **OOM**    |
+
+The experiments are therefore configured to use:
+
+```text
+4096 parallel environments
+```
+
+as the default training configuration.
+
+---
+
+# References
+
+* **DreamWaQ:** [arXiv:2301.10602](https://arxiv.org/abs/2301.10602)
+* **Upstream implementation:** https://github.com/curieuxjy/IsaacLab_DreamWaQ
+
+For implementation details and a direct comparison with the paper, see [`PAPER.md`](PAPER.md).
